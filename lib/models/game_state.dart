@@ -47,4 +47,9 @@ class GameState extends ChangeNotifier {
     if (progress == null) return 0;
     return progress.where((g) => g).length;
   }
+
+  bool isLevelUnlocked(int levelId) {
+    if (levelId <= 1) return true;
+    return getLevelProgress(levelId - 1) >= 0.8;
+  }
 }

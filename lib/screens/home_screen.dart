@@ -131,9 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               itemBuilder: (context, index) {
                 final level = quizLevels[index];
+                final isLocked = !widget.gameState.isLevelUnlocked(level.id);
+                final requiredLevelName = level.id > 1
+                    ? quizLevels[level.id - 2].title
+                    : null;
                 return LevelCard(
                   level: level,
                   progress: widget.gameState.getLevelProgress(level.id),
+                  isLocked: isLocked,
+                  requiredLevelName: requiredLevelName,
                   onTap: () async {
                     await Navigator.of(context).push(
                       MaterialPageRoute(

@@ -1,10 +1,8 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../theme/app_theme.dart';
-import '../widgets/answer_button.dart';
 import '../widgets/coin_badge.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -29,10 +27,11 @@ class _QuizScreenState extends State<QuizScreen> {
   int _sessionCoins = 0;
   int _sessionCorrect = 0;
   bool _answered = false;
-  int? _selectedIndex;
-  late List<String> _options;
-  late int _correctOptionIndex;
+  bool _showWrongMessage = false;
   bool _showResults = false;
+  bool _hasText = false;
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -45,38 +44,49 @@ class _QuizScreenState extends State<QuizScreen> {
       ..._questionOrder.sublist(0, startIdx),
     ];
     _currentIndex = 0;
-    _generateOptions();
+    _controller.addListener(_onTextChanged);
   }
 
-  void _generateOptions() {
-    final rng = Random();
+  void _onTextChanged() {
+    final hasText = _controller.text.trim().isNotEmpty;
+    if (hasText != _hasText) {
+      setState(() => _hasText = hasText);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTextChanged);
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _onSubmit() {
+    final guess = _controller.text.trim();
+    if (guess.isEmpty || _answered || _showWrongMessage) return;
     final animal = widget.level.animals[_questionOrder[_currentIndex]];
-    final otherNames = widget.level.animals
-        .where((a) => a.name != animal.name)
-        .map((a) => a.name)
-        .toList()
-      ..shuffle(rng);
-
-    final options = [animal.name, otherNames[0], otherNames[1]]..shuffle(rng);
-    _options = options;
-    _correctOptionIndex = options.indexOf(animal.name);
-  }
-
-  void _onAnswer(int index) {
-    if (_answered) return;
-    setState(() {
-      _answered = true;
-      _selectedIndex = index;
-      if (index == _correctOptionIndex) {
+    final correct = guess.toLowerCase() == animal.name.toLowerCase();
+    if (correct) {
+      setState(() {
+        _answered = true;
         _sessionCoins += 10;
         _sessionCorrect++;
-        widget.gameState.addCoins(10);
-        widget.gameState.markAnimalCorrect(
-          widget.level.id,
-          _questionOrder[_currentIndex],
-        );
-      }
-    });
+      });
+      widget.gameState.addCoins(10);
+      widget.gameState.markAnimalCorrect(
+        widget.level.id,
+        _questionOrder[_currentIndex],
+      );
+    } else {
+      setState(() => _showWrongMessage = true);
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        _controller.clear();
+        setState(() => _showWrongMessage = false);
+        _focusNode.requestFocus();
+      });
+    }
   }
 
   void _next() {
@@ -84,19 +94,16 @@ class _QuizScreenState extends State<QuizScreen> {
       setState(() => _showResults = true);
       return;
     }
+    _controller.clear();
     setState(() {
       _currentIndex++;
       _answered = false;
-      _selectedIndex = null;
-      _generateOptions();
+      _showWrongMessage = false;
     });
   }
 
-  AnswerState _getState(int index) {
-    if (!_answered) return AnswerState.idle;
-    if (index == _correctOptionIndex) return AnswerState.correct;
-    if (index == _selectedIndex) return AnswerState.wrong;
-    return AnswerState.idle;
+  String _buildHint(String name) {
+    return name.split('').map((_) => '_').join(' ');
   }
 
   @override
@@ -104,7 +111,6 @@ class _QuizScreenState extends State<QuizScreen> {
     if (_showResults) return _buildResults();
 
     final animal = widget.level.animals[_questionOrder[_currentIndex]];
-    final isCorrect = _answered && _selectedIndex == _correctOptionIndex;
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -157,43 +163,126 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: 16),
+            // Hint: underscores matching name length
+            Text(
+              _buildHint(animal.name),
+              style: GoogleFonts.nunito(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: Colors.grey,
+                letterSpacing: 4,
+              ),
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 24),
-            // Answer options
-            ...List.generate(_options.length, (i) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: AnswerButton(
-                  text: _options[i],
-                  state: _getState(i),
-                  onTap: _answered ? null : () => _onAnswer(i),
+            // Text input
+            TextField(
+              key: ValueKey('quiz_input_$_currentIndex'),
+              controller: _controller,
+              focusNode: _focusNode,
+              enabled: !_answered,
+              textAlign: TextAlign.center,
+              textCapitalization: TextCapitalization.words,
+              style: GoogleFonts.nunito(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Type your answer...',
+                hintStyle: GoogleFonts.nunito(fontSize: 18, color: Colors.grey),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              );
-            }),
-            // Feedback text
-            if (_answered) ...[
-              const SizedBox(height: 8),
-              AnimatedOpacity(
-                opacity: _answered ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 300),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(
+                    color: AppColors.deepPurple.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppColors.deepPurple,
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+              ),
+              onSubmitted: (_) => _onSubmit(),
+            ),
+            const SizedBox(height: 16),
+            // Submit button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _hasText && !_answered && !_showWrongMessage
+                    ? _onSubmit
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.deepPurple,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppColors.deepPurple.withValues(
+                    alpha: 0.4,
+                  ),
+                  disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  'SUBMIT',
+                  style: GoogleFonts.nunito(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            // Wrong answer feedback (temporary)
+            if (_showWrongMessage)
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: isCorrect
-                        ? AppColors.correctGreen.withValues(alpha: 0.1)
-                        : AppColors.wrongRed.withValues(alpha: 0.1),
+                    color: AppColors.wrongRed.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    isCorrect
-                        ? "That's the right answer! +10 Coins \u{1F389}"
-                        : 'Oops! The correct answer is ${animal.name}',
+                    "That's not right. Try again!",
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: isCorrect ? AppColors.correctGreen : AppColors.wrongRed,
+                      color: AppColors.wrongRed,
                     ),
                     textAlign: TextAlign.center,
                   ),
+                ),
+              ),
+
+            // Correct answer feedback + NEXT button
+            if (_answered) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.correctGreen.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  "That's the right answer! +10 Coins \u{1F389}",
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.correctGreen,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 16),
