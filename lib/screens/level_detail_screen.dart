@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
@@ -46,7 +47,7 @@ class _LevelDetailScreenState extends State<LevelDetailScreen> {
         backgroundColor: AppColors.deepPurple,
         foregroundColor: Colors.white,
         title: Text(
-          widget.level.displayTitle,
+          'level_display'.tr(args: [widget.level.id.toString(), widget.level.titleKey.tr()]),
           style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [

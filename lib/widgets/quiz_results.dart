@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -29,7 +30,7 @@ class QuizResults extends StatelessWidget {
               const Text('\u{1F389}', style: TextStyle(fontSize: 64)),
               const SizedBox(height: 24),
               Text(
-                'Quiz Complete!',
+                'quiz_complete'.tr(),
                 style: GoogleFonts.nunito(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -47,7 +48,7 @@ class QuizResults extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Score',
+                      'score'.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -70,7 +71,7 @@ class QuizResults extends StatelessWidget {
                         const Text('\u{1FA99}', style: TextStyle(fontSize: 24)),
                         const SizedBox(width: 8),
                         Text(
-                          '+$coinsEarned Coins Earned',
+                          'coins_earned'.tr(args: [coinsEarned.toString()]),
                           style: GoogleFonts.nunito(
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
@@ -93,7 +94,7 @@ class QuizResults extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Text(
-                      'BACK TO LEVEL',
+                      'back_to_level'.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,

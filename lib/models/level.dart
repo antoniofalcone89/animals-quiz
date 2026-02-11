@@ -14,5 +14,6 @@ class Level {
   });
 
   String get displayTitle => 'Level $id — $title';
+  String get titleKey => 'level_$id';
   int get questionCount => animals.length;
 }

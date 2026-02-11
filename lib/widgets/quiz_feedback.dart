@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -28,7 +29,7 @@ class QuizFeedback extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                "That's not right. Try again!",
+                'wrong_answer'.tr(),
                 style: GoogleFonts.nunito(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -47,7 +48,7 @@ class QuizFeedback extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              "That's the right answer! +10 Coins \u{1F389}",
+              'correct_answer'.tr(),
               style: GoogleFonts.nunito(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -67,7 +68,7 @@ class QuizFeedback extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 16),
               ),
               child: Text(
-                'NEXT \u{2192}',
+                'next'.tr(),
                 style: GoogleFonts.nunito(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
@@ -70,7 +71,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final guess = _controller.text.trim();
     if (guess.isEmpty || _answered || _showWrongMessage) return;
     final animal = widget.level.animals[_questionOrder[_currentIndex]];
-    final correct = guess.toLowerCase() == animal.name.toLowerCase();
+    final correct = guess.toLowerCase() == animal.translationKey.tr().toLowerCase();
     if (correct) {
       setState(() {
         _answered = true;
@@ -133,7 +134,7 @@ class _QuizScreenState extends State<QuizScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'Question ${_currentIndex + 1} of ${_questionOrder.length}',
+          'question_of'.tr(args: [(_currentIndex + 1).toString(), _questionOrder.length.toString()]),
           style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 16),
         ),
         centerTitle: true,
@@ -151,7 +152,7 @@ class _QuizScreenState extends State<QuizScreen> {
             AnimalEmojiCard(emoji: animal.emoji),
             const SizedBox(height: 28),
             Text(
-              'What is the name of this animal?',
+              'what_animal'.tr(),
               style: GoogleFonts.nunito(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -161,7 +162,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
             const SizedBox(height: 16),
             QuizInputSection(
-              hint: _buildHint(animal.name),
+              hint: _buildHint(animal.translationKey.tr()),
               controller: _controller,
               focusNode: _focusNode,
               enabled: !_answered,

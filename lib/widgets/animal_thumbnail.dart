@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/animal.dart';
@@ -68,7 +69,7 @@ class _AnimalThumbnailState extends State<AnimalThumbnail> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.guessed ? widget.animal.name : '#${widget.index + 1}',
+                      widget.guessed ? widget.animal.translationKey.tr() : '#${widget.index + 1}',
                       style: GoogleFonts.nunito(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

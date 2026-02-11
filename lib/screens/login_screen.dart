@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
@@ -59,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 40),
                 // Title
                 Text(
-                  'Welcome to\nAnimal Quiz Academy!',
+                  'welcome_title'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(
                     fontSize: 30,
@@ -70,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Play, Learn, and Discover Amazing Animals!',
+                  'welcome_subtitle'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(
                     fontSize: 15,
@@ -85,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _usernameController,
                   style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
-                    hintText: 'Enter your name',
+                    hintText: 'enter_name'.tr(),
                     hintStyle: GoogleFonts.nunito(color: Colors.grey[400]),
                     filled: true,
                     fillColor: Colors.white,
@@ -120,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     label: Text(
-                      'LOGIN WITH GOOGLE',
+                      'login_google'.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -141,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     _navigateToHome(gameState);
                   },
                   child: Text(
-                    'Continue as Guest',
+                    'continue_guest'.tr(),
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

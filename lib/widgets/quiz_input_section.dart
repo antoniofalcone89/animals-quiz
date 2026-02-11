@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -51,7 +52,7 @@ class QuizInputSection extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
           decoration: InputDecoration(
-            hintText: 'Type your answer...',
+            hintText: 'type_answer'.tr(),
             hintStyle: GoogleFonts.nunito(fontSize: 18, color: Colors.grey),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -96,7 +97,7 @@ class QuizInputSection extends StatelessWidget {
               ),
             ),
             child: Text(
-              'SUBMIT',
+              'submit'.tr(),
               style: GoogleFonts.nunito(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,

@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/level.dart';
@@ -80,7 +81,7 @@ class _LevelCardState extends State<LevelCard> {
                             const SizedBox(height: 8),
                             Expanded(
                               child: Text(
-                                widget.level.displayTitle,
+                                'level_display'.tr(args: [widget.level.id.toString(), widget.level.titleKey.tr()]),
                                 style: GoogleFonts.nunito(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
@@ -91,7 +92,7 @@ class _LevelCardState extends State<LevelCard> {
                               ),
                             ),
                             Text(
-                              '${widget.level.questionCount} Questions',
+                              'questions_count'.tr(args: [widget.level.questionCount.toString()]),
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -127,7 +128,7 @@ class _LevelCardState extends State<LevelCard> {
                           Icon(Icons.lock_rounded, size: 32, color: Colors.grey[400]),
                           const SizedBox(height: 8),
                           Text(
-                            'Complete 80% of',
+                            'complete_80'.tr(),
                             style: GoogleFonts.nunito(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,

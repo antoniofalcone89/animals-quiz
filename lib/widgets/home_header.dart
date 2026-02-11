@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -25,7 +26,7 @@ class HomeHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Hello, $username!',
+                  'hello_user'.tr(args: [username]),
                   style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -41,7 +42,7 @@ class HomeHeader extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
           child: Text(
-            'What would you like to play today?',
+            'play_today'.tr(),
             style: GoogleFonts.nunito(
               fontSize: 16,
               fontWeight: FontWeight.w600,

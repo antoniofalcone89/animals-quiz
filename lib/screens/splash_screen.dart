@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -31,7 +32,7 @@ class SplashScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
-                  'Welcome to\nAnimal Quiz Academy!',
+                  'welcome_title'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(
                     fontSize: 34,
@@ -46,7 +47,7 @@ class SplashScreen extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Text(
-                  'Play, Learn, and Discover Amazing Animals!',
+                  'welcome_subtitle'.tr(),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.nunito(
                     fontSize: 17,
@@ -78,7 +79,7 @@ class SplashScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 18),
                     ),
                     child: Text(
-                      'GET STARTED',
+                      'get_started'.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,

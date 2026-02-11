@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../data/quiz_data.dart';
@@ -5,6 +6,7 @@ import '../models/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/home_header.dart';
 import '../widgets/level_grid.dart';
+import '../widgets/profile_view.dart';
 import 'level_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -44,7 +46,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
       body: SafeArea(
-        child: _currentIndex == 0 ? _buildHome() : _buildPlaceholder(),
+        child: _currentIndex == 0
+            ? _buildHome()
+            : _currentIndex == 2
+                ? ProfileView(
+                    username: widget.gameState.username,
+                    totalCoins: widget.gameState.totalCoins,
+                  )
+                : _buildPlaceholder(),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -52,10 +61,10 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: AppColors.deepPurple,
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.leaderboard_rounded), label: 'Leaderboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: 'home'.tr()),
+          BottomNavigationBarItem(icon: const Icon(Icons.leaderboard_rounded), label: 'leaderboard'.tr()),
+          BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: 'profile'.tr()),
         ],
       ),
     );
@@ -69,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(Icons.construction_rounded, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'Coming Soon!',
+            'coming_soon'.tr(),
             style: GoogleFonts.nunito(
               fontSize: 22,
               fontWeight: FontWeight.w700,

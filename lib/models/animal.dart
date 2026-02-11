@@ -8,4 +8,6 @@ class Animal {
     required this.emoji,
     required this.imageUrl,
   });
+
+  String get translationKey => 'animal_${name.toLowerCase().replaceAll(' ', '_')}';
 }
