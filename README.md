@@ -27,6 +27,38 @@ flutter run -d ios
 flutter run -d android
 ```
 
+## Environment Configuration
+
+Runtime configuration is passed via `--dart-define` flags. No `.env` file is used.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `USE_MOCK` | Use mock repositories (no backend needed) | `""` (false) |
+| `API_URL` | Backend API base URL | `""` |
+| `ENV` | Environment name (`dev`, `prod`) | `dev` |
+
+### Mock mode (default for local development)
+
+Runs entirely offline with hardcoded quiz data and mock auth:
+
+```
+flutter run -d chrome --dart-define=USE_MOCK=true
+```
+
+### API mode (with backend)
+
+Connects to a real backend server:
+
+```
+flutter run -d chrome --dart-define=API_URL=https://api.example.com/api/v1
+```
+
+You can combine multiple flags:
+
+```
+flutter run -d chrome --dart-define=API_URL=http://localhost:8080/api/v1 --dart-define=ENV=dev
+```
+
 ## Testing
 
 ```

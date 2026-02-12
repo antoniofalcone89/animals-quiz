@@ -1,5 +1,4 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import '../config/env.dart';
 import '../repositories/api/api_auth_repository.dart';
 import '../repositories/api/api_leaderboard_repository.dart';
 import '../repositories/api/api_quiz_repository.dart';
@@ -26,15 +25,12 @@ class ServiceLocator {
   void initialize() {
     if (_initialized) return;
 
-    final useMock = dotenv.env['USE_MOCK']?.toLowerCase() == 'true';
-
-    if (useMock) {
+    if (Env.isMock) {
       authRepository = MockAuthRepository();
       quizRepository = MockQuizRepository();
       leaderboardRepository = MockLeaderboardRepository();
     } else {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://api.example.com/api/v1';
-      final client = ApiClient(baseUrl: baseUrl);
+      final client = ApiClient(baseUrl: Env.apiUrl);
       authRepository = ApiAuthRepository(client);
       quizRepository = ApiQuizRepository(client);
       leaderboardRepository = ApiLeaderboardRepository(client);
