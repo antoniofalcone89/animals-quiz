@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
+import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 
@@ -27,6 +28,13 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       (route) => false,
     );
+  }
+
+  GameState _createGameState(String username) {
+    final sl = ServiceLocator.instance;
+    final gameState = GameState(quizRepository: sl.quizRepository);
+    gameState.setUsername(username);
+    return gameState;
   }
 
   @override
@@ -104,10 +112,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      final gameState = GameState();
-                      gameState.setUsername(
-                        _usernameController.text.isEmpty ? 'Player' : _usernameController.text,
-                      );
+                      final username = _usernameController.text.isEmpty
+                          ? 'Player'
+                          : _usernameController.text;
+                      final gameState = _createGameState(username);
                       _navigateToHome(gameState);
                     },
                     icon: Image.network(
@@ -137,8 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Continue as Guest
                 TextButton(
                   onPressed: () {
-                    final gameState = GameState();
-                    gameState.setUsername('Guest');
+                    final gameState = _createGameState('Guest');
                     _navigateToHome(gameState);
                   },
                   child: Text(

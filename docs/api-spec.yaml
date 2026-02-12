@@ -1,0 +1,484 @@
+openapi: 3.0.3
+info:
+  title: Animal Quiz Academy API
+  description: Backend API for Animal Quiz Academy — an educational quiz app about animals with gamified progression.
+  version: 1.0.0
+
+servers:
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: Auth
+    description: Authentication and user registration
+  - name: Levels
+    description: Quiz levels and their animals
+  - name: Quiz
+    description: Answer submission and scoring
+  - name: Users
+    description: User progress and profile
+  - name: Leaderboard
+    description: Global rankings
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, username]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                username:
+                  type: string
+                  minLength: 2
+                  maxLength: 30
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Login or register with Google
+      operationId: loginWithGoogle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idToken]
+              properties:
+                idToken:
+                  type: string
+                  description: Google Sign-In ID token
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /levels:
+    get:
+      tags: [Levels]
+      summary: List all levels with user progress summary
+      operationId: getLevels
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of levels
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  levels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Level'
+
+  /levels/{levelId}:
+    get:
+      tags: [Levels]
+      summary: Get level detail with animals and per-animal guessed status
+      operationId: getLevelDetail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: levelId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Level detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LevelDetail'
+        '404':
+          description: Level not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /quiz/answer:
+    post:
+      tags: [Quiz]
+      summary: Submit an answer for an animal in a level
+      operationId: submitAnswer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+      responses:
+        '200':
+          description: Answer result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/me/progress:
+    get:
+      tags: [Users]
+      summary: Get all level progress for current user
+      operationId: getUserProgress
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User progress per level
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  levels:
+                    type: object
+                    description: "Map of levelId (string) to array of booleans indicating guessed status per animal"
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: boolean
+                example:
+                  levels:
+                    "1": [true, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+                    "2": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]
+
+  /users/me/coins:
+    get:
+      tags: [Users]
+      summary: Get current coin total
+      operationId: getUserCoins
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Coin total
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalCoins:
+                    type: integer
+                    example: 120
+
+  /users/me/profile:
+    patch:
+      tags: [Users]
+      summary: Update user profile (username)
+      operationId: updateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 2
+                  maxLength: 30
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /leaderboard:
+    get:
+      tags: [Leaderboard]
+      summary: Get global leaderboard (paginated)
+      operationId: getLeaderboard
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+                  total:
+                    type: integer
+                    description: Total number of ranked users
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        totalCoins:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, username, email, totalCoins, createdAt]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+          description: JWT bearer token
+      required: [user, token]
+
+    Level:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        emoji:
+          type: string
+        animals:
+          type: array
+          items:
+            $ref: '#/components/schemas/Animal'
+      required: [id, title, emoji, animals]
+
+    LevelDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        emoji:
+          type: string
+        animals:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnimalWithStatus'
+      required: [id, title, emoji, animals]
+
+    Animal:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        emoji:
+          type: string
+        imageUrl:
+          type: string
+          format: uri
+      required: [id, name, emoji, imageUrl]
+
+    AnimalWithStatus:
+      allOf:
+        - $ref: '#/components/schemas/Animal'
+        - type: object
+          properties:
+            guessed:
+              type: boolean
+              description: Whether the current user has correctly guessed this animal
+
+    AnswerRequest:
+      type: object
+      required: [levelId, animalIndex, answer]
+      properties:
+        levelId:
+          type: integer
+        animalIndex:
+          type: integer
+          description: Zero-based index of the animal within the level
+        answer:
+          type: string
+          description: The user's guess (case-insensitive comparison)
+
+    AnswerResponse:
+      type: object
+      properties:
+        correct:
+          type: boolean
+        coinsAwarded:
+          type: integer
+          description: Coins earned for this answer (0 if wrong or already guessed)
+        totalCoins:
+          type: integer
+          description: User's updated total coin count
+        correctAnswer:
+          type: string
+          nullable: true
+          description: The correct answer (only returned when wrong)
+      required: [correct, coinsAwarded, totalCoins]
+
+    LevelProgress:
+      type: object
+      properties:
+        levelId:
+          type: integer
+        guessed:
+          type: array
+          items:
+            type: boolean
+          description: Per-animal guessed status (ordered by animal index)
+      required: [levelId, guessed]
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        userId:
+          type: string
+        username:
+          type: string
+        totalCoins:
+          type: integer
+        levelsCompleted:
+          type: integer
+      required: [rank, userId, username, totalCoins, levelsCompleted]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: Machine-readable error code
+              example: invalid_credentials
+            message:
+              type: string
+              description: Human-readable error message
+              example: Invalid email or password
+          required: [code, message]

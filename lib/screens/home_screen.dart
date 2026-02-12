@@ -1,10 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../data/quiz_data.dart';
 import '../models/game_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/home_header.dart';
+import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
 import '../widgets/profile_view.dart';
 import 'level_detail_screen.dart';
@@ -24,11 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize level progress
-    for (final level in quizLevels) {
-      widget.gameState.initLevel(level.id, level.animals.length);
-    }
     widget.gameState.addListener(_onStateChanged);
+    widget.gameState.loadLevels();
   }
 
   @override
@@ -48,12 +45,12 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: _currentIndex == 0
             ? _buildHome()
-            : _currentIndex == 2
-                ? ProfileView(
+            : _currentIndex == 1
+                ? const LeaderboardView()
+                : ProfileView(
                     username: widget.gameState.username,
                     totalCoins: widget.gameState.totalCoins,
-                  )
-                : _buildPlaceholder(),
+                  ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -70,27 +67,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction_rounded, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'coming_soon'.tr(),
-            style: GoogleFonts.nunito(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHome() {
+    if (widget.gameState.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (widget.gameState.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              widget.gameState.error!,
+              style: GoogleFonts.nunito(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => widget.gameState.loadLevels(),
+              child: Text('retry'.tr()),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

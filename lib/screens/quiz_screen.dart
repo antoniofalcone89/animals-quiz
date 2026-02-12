@@ -67,22 +67,22 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
-  void _onSubmit() {
+  Future<void> _onSubmit() async {
     final guess = _controller.text.trim();
     if (guess.isEmpty || _answered || _showWrongMessage) return;
-    final animal = widget.level.animals[_questionOrder[_currentIndex]];
-    final correct = guess.toLowerCase() == animal.translationKey.tr().toLowerCase();
-    if (correct) {
+
+    final result = await widget.gameState.submitAnswer(
+      widget.level.id,
+      _questionOrder[_currentIndex],
+      guess,
+    );
+
+    if (result.correct) {
       setState(() {
         _answered = true;
-        _sessionCoins += 10;
+        _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
       });
-      widget.gameState.addCoins(10);
-      widget.gameState.markAnimalCorrect(
-        widget.level.id,
-        _questionOrder[_currentIndex],
-      );
     } else {
       setState(() => _showWrongMessage = true);
       Future.delayed(const Duration(seconds: 3), () {
