@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "123269083042",
+    "project_id": "animals-game-de9c0",
+    "storage_bucket": "animals-game-de9c0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123269083042:android:c7a3354da7f6ae633f4cfb",
+        "android_client_info": {
+          "package_name": "com.animalquiz.animal_quiz_academy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "123269083042-uq3qnlottdtoi69clptkn0088s25taa0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuctcqxTKnmXsRDTReadJW5LjF56TkfB4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "123269083042-uq3qnlottdtoi69clptkn0088s25taa0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "123269083042-bvah45vdoopfs4idr22d5g0692qn0f5d.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.animalquiz.animalQuizAcademy"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
