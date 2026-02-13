@@ -2,12 +2,14 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
+import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/home_header.dart';
 import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
 import '../widgets/profile_view.dart';
 import 'level_detail_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final GameState gameState;
@@ -26,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     widget.gameState.addListener(_onStateChanged);
     widget.gameState.loadLevels();
+    widget.gameState.loadProgress();
   }
 
   @override
@@ -36,6 +39,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onStateChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _handleLogout() async {
+    final authRepo = ServiceLocator.instance.authRepository;
+    await authRepo.signOut();
+    if (mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const LoginScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -50,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 : ProfileView(
                     username: widget.gameState.username,
                     totalCoins: widget.gameState.totalCoins,
+                    onLogout: _handleLogout,
                   ),
       ),
       bottomNavigationBar: BottomNavigationBar(

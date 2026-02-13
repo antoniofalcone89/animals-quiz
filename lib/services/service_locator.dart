@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../config/env.dart';
-import '../repositories/api/api_auth_repository.dart';
 import '../repositories/api/api_leaderboard_repository.dart';
 import '../repositories/api/api_quiz_repository.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/firebase/firebase_auth_repository.dart';
 import '../repositories/leaderboard_repository.dart';
 import '../repositories/mock/mock_auth_repository.dart';
 import '../repositories/mock/mock_leaderboard_repository.dart';
@@ -31,10 +33,24 @@ class ServiceLocator {
       leaderboardRepository = MockLeaderboardRepository();
     } else {
       final client = ApiClient(baseUrl: Env.apiUrl);
-      authRepository = ApiAuthRepository(client);
+      client.setTokenProvider(
+        () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+      );
+      authRepository = FirebaseAuthRepository(client);
       quizRepository = ApiQuizRepository(client);
       leaderboardRepository = ApiLeaderboardRepository(client);
     }
+
+    _initialized = true;
+  }
+
+  /// For tests — always uses mock repositories, skips Firebase.
+  void initializeForTest() {
+    if (_initialized) return;
+
+    authRepository = MockAuthRepository();
+    quizRepository = MockQuizRepository();
+    leaderboardRepository = MockLeaderboardRepository();
 
     _initialized = true;
   }

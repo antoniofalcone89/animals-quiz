@@ -1,12 +1,23 @@
 import 'package:easy_localization/easy_localization.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'config/env.dart';
+import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'services/service_locator.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!Env.isMock) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  }
+
   ServiceLocator.instance.initialize();
+
   runApp(
     EasyLocalization(
       supportedLocales: const [Locale('it'), Locale('en')],
