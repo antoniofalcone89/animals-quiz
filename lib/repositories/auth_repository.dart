@@ -1,22 +1,24 @@
-import '../models/auth_result.dart';
 import '../models/user.dart';
 
 abstract class AuthRepository {
-  Future<AuthResult> login({required String email, required String password});
+  /// Sign in with Google. Returns false if the user cancelled.
+  Future<bool> signInWithGoogle();
 
-  Future<AuthResult> loginWithGoogle({required String idToken});
+  /// Sign in anonymously (guest).
+  Future<void> signInAnonymously();
 
-  Future<AuthResult> register({
-    required String email,
-    required String password,
-    required String username,
-  });
+  /// Sign out of Firebase and clear local state.
+  Future<void> signOut();
 
-  Future<User> getCurrentUser();
+  /// Register a profile on the backend. Returns the created User.
+  Future<User> registerProfile(String username);
 
-  Future<void> logout();
+  /// Get the current user's profile from the backend, or null if not registered.
+  Future<User?> getCurrentUser();
 
-  bool get isLoggedIn;
+  /// Get a fresh Firebase ID token (or mock token).
+  Future<String?> getIdToken();
 
-  String? get currentToken;
+  /// Whether the user is currently signed in.
+  bool get isSignedIn;
 }

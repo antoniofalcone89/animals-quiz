@@ -15,6 +15,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
 
   void _navigateToHome(GameState gameState) {
     Navigator.of(context).pushAndRemoveUntil(
@@ -30,11 +32,74 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  GameState _createGameState(String username) {
+  Future<GameState> _createGameState(String username) async {
     final sl = ServiceLocator.instance;
     final gameState = GameState(quizRepository: sl.quizRepository);
     gameState.setUsername(username);
     return gameState;
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
+    setState(() { _isLoading = true; _errorMessage = null; });
+
+    try {
+      final sl = ServiceLocator.instance;
+      final authRepo = sl.authRepository;
+
+      final success = await authRepo.signInWithGoogle();
+      if (!success) {
+        // User cancelled
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      // Check if user has a profile
+      var user = await authRepo.getCurrentUser();
+
+      if (user == null) {
+        // First time — register with username from text field (or 'Player')
+        final username = _usernameController.text.isEmpty
+            ? 'Player'
+            : _usernameController.text;
+        user = await authRepo.registerProfile(username);
+      }
+
+      final gameState = await _createGameState(user.username);
+      if (mounted) _navigateToHome(gameState);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'auth_error'.tr();
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGuestSignIn() async {
+    if (_isLoading) return;
+    setState(() { _isLoading = true; _errorMessage = null; });
+
+    try {
+      final sl = ServiceLocator.instance;
+      final authRepo = sl.authRepository;
+
+      await authRepo.signInAnonymously();
+
+      // Register guest profile
+      final user = await authRepo.registerProfile('Guest');
+
+      final gameState = await _createGameState(user.username);
+      if (mounted) _navigateToHome(gameState);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'auth_error'.tr();
+        });
+      }
+    }
   }
 
   @override
@@ -92,6 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Username field
                 TextField(
                   controller: _usernameController,
+                  enabled: !_isLoading,
                   style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
                   decoration: InputDecoration(
                     hintText: 'enter_name'.tr(),
@@ -107,29 +173,43 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Login with Google button (mock)
+                // Error message
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      _errorMessage!,
+                      style: GoogleFonts.nunito(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red[200],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                // Login with Google button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      final username = _usernameController.text.isEmpty
-                          ? 'Player'
-                          : _usernameController.text;
-                      final gameState = _createGameState(username);
-                      _navigateToHome(gameState);
-                    },
-                    icon: Image.network(
-                      'https://placehold.co/24x24/white/333?text=G',
-                      width: 24,
-                      height: 24,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.g_mobiledata,
-                        size: 28,
-                        color: AppColors.deepPurple,
-                      ),
-                    ),
+                    onPressed: _isLoading ? null : _handleGoogleSignIn,
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Image.network(
+                            'https://placehold.co/24x24/white/333?text=G',
+                            width: 24,
+                            height: 24,
+                            errorBuilder: (context, error, stackTrace) => const Icon(
+                              Icons.g_mobiledata,
+                              size: 28,
+                              color: AppColors.deepPurple,
+                            ),
+                          ),
                     label: Text(
-                      'login_google'.tr(),
+                      _isLoading ? 'signing_in'.tr() : 'login_google'.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
@@ -144,16 +224,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 // Continue as Guest
                 TextButton(
-                  onPressed: () {
-                    final gameState = _createGameState('Guest');
-                    _navigateToHome(gameState);
-                  },
+                  onPressed: _isLoading ? null : _handleGuestSignIn,
                   child: Text(
                     'continue_guest'.tr(),
                     style: GoogleFonts.nunito(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withValues(alpha: _isLoading ? 0.4 : 0.9),
                       decoration: TextDecoration.underline,
                       decorationColor: Colors.white.withValues(alpha: 0.5),
                     ),

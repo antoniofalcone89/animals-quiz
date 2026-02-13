@@ -6,7 +6,7 @@ import 'package:animal_quiz_academy/services/service_locator.dart';
 
 void main() {
   testWidgets('App launches smoke test', (WidgetTester tester) async {
-    ServiceLocator.instance.initialize();
+    ServiceLocator.instance.initializeForTest();
 
     await tester.pumpWidget(
       EasyLocalization(

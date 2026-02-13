@@ -30,6 +30,9 @@
   "italian": "Italian",
   "total_coins": "Total Coins",
   "retry": "Retry",
+  "logout": "Logout",
+  "signing_in": "Signing in...",
+  "auth_error": "Login failed. Please try again.",
 
   "level_1": "Safari Animals",
   "level_2": "Ocean Creatures",
