@@ -47,6 +47,7 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<User> registerProfile(String username) async {
     try {
+      await _firebaseAuth.currentUser?.updateDisplayName(username);
       final json = await _client.post('/auth/register', body: {
         'username': username,
       });
@@ -75,4 +76,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   bool get isSignedIn => _firebaseAuth.currentUser != null;
+
+  @override
+  String? get displayName => _firebaseAuth.currentUser?.displayName;
 }

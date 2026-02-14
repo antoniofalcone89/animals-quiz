@@ -46,4 +46,7 @@ class MockAuthRepository implements AuthRepository {
 
   @override
   bool get isSignedIn => _signedIn;
+
+  @override
+  String? get displayName => _signedIn ? 'Mock User' : null;
 }

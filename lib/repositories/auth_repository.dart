@@ -21,4 +21,7 @@ abstract class AuthRepository {
 
   /// Whether the user is currently signed in.
   bool get isSignedIn;
+
+  /// Display name from the auth provider (e.g. Google account name).
+  String? get displayName;
 }

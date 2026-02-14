@@ -33,6 +33,9 @@
   "logout": "Logout",
   "signing_in": "Signing in...",
   "auth_error": "Login failed. Please try again.",
+  "or_divider": "OR",
+  "name_required": "Please enter your name to continue",
+  "guest_login": "CONTINUE AS GUEST",
 
   "level_1": "Safari Animals",
   "level_2": "Ocean Creatures",
