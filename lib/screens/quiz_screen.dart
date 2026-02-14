@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/animal.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../theme/app_theme.dart';
@@ -107,6 +108,11 @@ class _QuizScreenState extends State<QuizScreen> {
     });
   }
 
+  String _animalDisplayName(Animal animal) {
+    final translated = animal.translationKey.tr();
+    return translated == animal.translationKey ? animal.name : translated;
+  }
+
   String _buildHint(String name) {
     return name.split('').map((_) => '_').join(' ');
   }
@@ -149,7 +155,7 @@ class _QuizScreenState extends State<QuizScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           children: [
-            AnimalEmojiCard(emoji: animal.emoji),
+            AnimalEmojiCard(emoji: animal.emoji ?? '\u{2753}'),
             const SizedBox(height: 28),
             Text(
               'what_animal'.tr(),
@@ -162,7 +168,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
             const SizedBox(height: 16),
             QuizInputSection(
-              hint: _buildHint(animal.translationKey.tr()),
+              hint: _buildHint(_animalDisplayName(animal)),
               controller: _controller,
               focusNode: _focusNode,
               enabled: !_answered,

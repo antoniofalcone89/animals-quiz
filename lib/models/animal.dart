@@ -1,13 +1,13 @@
 class Animal {
   final int? id;
   final String name;
-  final String emoji;
+  final String? emoji;
   final String imageUrl;
 
   const Animal({
     this.id,
     required this.name,
-    required this.emoji,
+    this.emoji,
     required this.imageUrl,
   });
 
@@ -15,7 +15,7 @@ class Animal {
     return Animal(
       id: json['id'] as int?,
       name: json['name'] as String,
-      emoji: json['emoji'] as String,
+      emoji: json['emoji'] as String?,
       imageUrl: json['imageUrl'] as String,
     );
   }
@@ -24,7 +24,7 @@ class Animal {
     return {
       if (id != null) 'id': id,
       'name': name,
-      'emoji': emoji,
+      if (emoji != null) 'emoji': emoji,
       'imageUrl': imageUrl,
     };
   }
