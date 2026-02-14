@@ -108,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => widget.gameState.loadLevels(),
+              onPressed: () {
+                widget.gameState.loadLevels();
+                widget.gameState.loadProgress();
+              },
               child: Text('retry'.tr()),
             ),
           ],

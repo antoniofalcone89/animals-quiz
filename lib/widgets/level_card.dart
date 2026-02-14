@@ -75,7 +75,7 @@ class _LevelCardState extends State<LevelCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.level.emoji,
+                              widget.level.emoji ?? '\u{1F43E}',
                               style: const TextStyle(fontSize: 32),
                             ),
                             const SizedBox(height: 8),

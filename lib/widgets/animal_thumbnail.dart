@@ -4,6 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/animal.dart';
 import '../theme/app_theme.dart';
 
+String _displayName(Animal animal) {
+  final translated = animal.translationKey.tr();
+  return translated == animal.translationKey ? animal.name : translated;
+}
+
 class AnimalThumbnail extends StatefulWidget {
   final Animal animal;
   final int index;
@@ -62,14 +67,14 @@ class _AnimalThumbnailState extends State<AnimalThumbnail> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      widget.guessed ? widget.animal.emoji : '?',
+                      widget.guessed ? (widget.animal.emoji ?? '\u{2705}') : '?',
                       style: TextStyle(
                         fontSize: widget.guessed ? 40 : 36,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      widget.guessed ? widget.animal.translationKey.tr() : '#${widget.index + 1}',
+                      widget.guessed ? _displayName(widget.animal) : '#${widget.index + 1}',
                       style: GoogleFonts.nunito(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,

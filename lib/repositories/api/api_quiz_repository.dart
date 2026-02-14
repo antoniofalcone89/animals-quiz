@@ -40,7 +40,11 @@ class ApiQuizRepository implements QuizRepository {
     final json = await _client.get('/users/me/progress');
     final levels = json['levels'] as Map<String, dynamic>;
     return levels.map((key, value) {
-      final boolList = (value as List<dynamic>).map((e) => e as bool).toList();
+      final animals = value as List<dynamic>;
+      final boolList = animals.map((a) {
+        if (a is bool) return a;
+        return (a as Map<String, dynamic>)['guessed'] as bool;
+      }).toList();
       return MapEntry(int.parse(key), boolList);
     });
   }

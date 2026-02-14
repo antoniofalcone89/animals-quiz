@@ -3,13 +3,13 @@ import 'animal.dart';
 class Level {
   final int id;
   final String title;
-  final String emoji;
+  final String? emoji;
   final List<Animal> animals;
 
   const Level({
     required this.id,
     required this.title,
-    required this.emoji,
+    this.emoji,
     required this.animals,
   });
 
@@ -17,7 +17,7 @@ class Level {
     return Level(
       id: json['id'] as int,
       title: json['title'] as String,
-      emoji: json['emoji'] as String,
+      emoji: json['emoji'] as String?,
       animals: (json['animals'] as List<dynamic>)
           .map((a) => Animal.fromJson(a as Map<String, dynamic>))
           .toList(),
@@ -28,7 +28,7 @@ class Level {
     return {
       'id': id,
       'title': title,
-      'emoji': emoji,
+      if (emoji != null) 'emoji': emoji,
       'animals': animals.map((a) => a.toJson()).toList(),
     };
   }
