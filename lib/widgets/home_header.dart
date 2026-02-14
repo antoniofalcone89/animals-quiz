@@ -26,7 +26,7 @@ class HomeHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'hello_user'.tr(args: [username]),
+                  'hello_user'.tr(args: [username.split(' ').first]),
                   style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,

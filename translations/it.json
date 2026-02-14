@@ -33,6 +33,9 @@
   "logout": "Esci",
   "signing_in": "Accesso in corso...",
   "auth_error": "Accesso fallito. Riprova.",
+  "or_divider": "OPPURE",
+  "name_required": "Inserisci il tuo nome per continuare",
+  "guest_login": "CONTINUA COME OSPITE",
 
   "level_1": "Animali del Safari",
   "level_2": "Creature dell'Oceano",
