@@ -28,6 +28,4 @@ class Animal {
       'imageUrl': imageUrl,
     };
   }
-
-  String get translationKey => 'animal_${name.toLowerCase().replaceAll(' ', '_')}';
 }

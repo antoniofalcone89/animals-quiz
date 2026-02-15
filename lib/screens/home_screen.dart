@@ -41,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  void _handleLocaleChanged(String locale) {
+    ServiceLocator.instance.setLocale(locale);
+    widget.gameState.loadLevels();
+  }
+
   Future<void> _handleLogout() async {
     final authRepo = ServiceLocator.instance.authRepository;
     await authRepo.signOut();
@@ -72,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     username: widget.gameState.username,
                     totalCoins: widget.gameState.totalCoins,
                     onLogout: _handleLogout,
+                    onLocaleChanged: _handleLocaleChanged,
                   ),
       ),
       bottomNavigationBar: BottomNavigationBar(

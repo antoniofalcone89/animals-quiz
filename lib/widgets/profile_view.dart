@@ -7,12 +7,14 @@ class ProfileView extends StatelessWidget {
   final String username;
   final int totalCoins;
   final VoidCallback? onLogout;
+  final ValueChanged<String>? onLocaleChanged;
 
   const ProfileView({
     super.key,
     required this.username,
     required this.totalCoins,
     this.onLogout,
+    this.onLocaleChanged,
   });
 
   @override
@@ -96,7 +98,9 @@ class ProfileView extends StatelessWidget {
                 ],
                 selected: {currentLocale.languageCode},
                 onSelectionChanged: (selected) {
-                  context.setLocale(Locale(selected.first));
+                  final locale = selected.first;
+                  context.setLocale(Locale(locale));
+                  onLocaleChanged?.call(locale);
                 },
                 style: ButtonStyle(
                   backgroundColor: WidgetStateProperty.resolveWith((states) {

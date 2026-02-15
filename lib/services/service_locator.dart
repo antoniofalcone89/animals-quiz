@@ -20,6 +20,7 @@ class ServiceLocator {
   late final QuizRepository quizRepository;
   late final LeaderboardRepository leaderboardRepository;
 
+  ApiClient? _apiClient;
   bool _initialized = false;
 
   ServiceLocator._();
@@ -36,12 +37,17 @@ class ServiceLocator {
       client.setTokenProvider(
         () async => FirebaseAuth.instance.currentUser?.getIdToken(),
       );
+      _apiClient = client;
       authRepository = FirebaseAuthRepository(client);
       quizRepository = ApiQuizRepository(client);
       leaderboardRepository = ApiLeaderboardRepository(client);
     }
 
     _initialized = true;
+  }
+
+  void setLocale(String locale) {
+    _apiClient?.setLocale(locale);
   }
 
   /// For tests — always uses mock repositories, skips Firebase.

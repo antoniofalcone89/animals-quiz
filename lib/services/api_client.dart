@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 class ApiClient {
   final String baseUrl;
   Future<String?> Function()? _tokenProvider;
+  String _locale = 'it';
 
   ApiClient({required this.baseUrl});
 
@@ -12,10 +13,15 @@ class ApiClient {
     _tokenProvider = provider;
   }
 
+  void setLocale(String locale) {
+    _locale = locale;
+  }
+
   Future<Map<String, String>> _headers() async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Accept-Language': _locale,
     };
     if (_tokenProvider != null) {
       final token = await _tokenProvider!();

@@ -1,7 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../models/animal.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../theme/app_theme.dart';
@@ -36,6 +35,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _showWrongMessage = false;
   bool _showResults = false;
   bool _hasText = false;
+  String? _revealedName;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -68,6 +68,13 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
+  bool _isCurrentAnimalGuessed() {
+    return widget.gameState.isAnimalGuessed(
+      widget.level.id,
+      _questionOrder[_currentIndex],
+    );
+  }
+
   Future<void> _onSubmit() async {
     final guess = _controller.text.trim();
     if (guess.isEmpty || _answered || _showWrongMessage) return;
@@ -79,8 +86,10 @@ class _QuizScreenState extends State<QuizScreen> {
     );
 
     if (result.correct) {
+      final animal = widget.level.animals[_questionOrder[_currentIndex]];
       setState(() {
         _answered = true;
+        _revealedName = animal.name;
         _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
       });
@@ -105,12 +114,8 @@ class _QuizScreenState extends State<QuizScreen> {
       _currentIndex++;
       _answered = false;
       _showWrongMessage = false;
+      _revealedName = null;
     });
-  }
-
-  String _animalDisplayName(Animal animal) {
-    final translated = animal.translationKey.tr();
-    return translated == animal.translationKey ? animal.name : translated;
   }
 
   String _buildHint(String name) {
@@ -129,6 +134,7 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     final animal = widget.level.animals[_questionOrder[_currentIndex]];
+    final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -168,19 +174,43 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
             const SizedBox(height: 16),
             QuizInputSection(
-              hint: _buildHint(_animalDisplayName(animal)),
+              hint: _buildHint(animal.name),
+              revealedName: alreadyGuessed ? animal.name : _revealedName,
+              alreadyGuessed: alreadyGuessed,
               controller: _controller,
               focusNode: _focusNode,
-              enabled: !_answered,
+              enabled: !_answered && !alreadyGuessed,
               questionIndex: _currentIndex,
-              canSubmit: _hasText && !_answered && !_showWrongMessage,
+              canSubmit: _hasText && !_answered && !_showWrongMessage && !alreadyGuessed,
               onSubmit: _onSubmit,
             ),
-            QuizFeedback(
-              showWrongMessage: _showWrongMessage,
-              answered: _answered,
-              onNext: _next,
-            ),
+            if (!alreadyGuessed)
+              QuizFeedback(
+                showWrongMessage: _showWrongMessage,
+                answered: _answered,
+                onNext: _next,
+              ),
+            if (alreadyGuessed) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _next,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Text(
+                    'next'.tr(),
+                    style: GoogleFonts.nunito(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

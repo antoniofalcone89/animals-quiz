@@ -36,6 +36,7 @@
   "or_divider": "OR",
   "name_required": "Please enter your name to continue",
   "guest_login": "CONTINUE AS GUEST",
+  "already_guessed": "You already guessed this one!",
 
   "level_1": "Safari Animals",
   "level_2": "Ocean Creatures",

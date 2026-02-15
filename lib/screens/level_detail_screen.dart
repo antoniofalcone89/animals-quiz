@@ -47,7 +47,7 @@ class _LevelDetailScreenState extends State<LevelDetailScreen> {
         backgroundColor: AppColors.deepPurple,
         foregroundColor: Colors.white,
         title: Text(
-          'level_display'.tr(args: [widget.level.id.toString(), widget.level.titleKey.tr()]),
+          'level_display'.tr(args: [widget.level.id.toString(), widget.level.title]),
           style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [

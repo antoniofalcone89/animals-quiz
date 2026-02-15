@@ -1,5 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
-
 import '../../data/quiz_data.dart';
 import '../../models/answer_result.dart';
 import '../../models/level.dart';
@@ -27,7 +25,7 @@ class MockQuizRepository implements QuizRepository {
   }) async {
     final level = quizLevels.firstWhere((l) => l.id == levelId);
     final animal = level.animals[animalIndex];
-    final correctName = animal.translationKey.tr().toLowerCase();
+    final correctName = animal.name.toLowerCase();
     final correct = answer.trim().toLowerCase() == correctName;
 
     int coinsAwarded = 0;
@@ -42,7 +40,7 @@ class MockQuizRepository implements QuizRepository {
       correct: correct,
       coinsAwarded: coinsAwarded,
       totalCoins: _coins,
-      correctAnswer: correct ? null : animal.translationKey.tr(),
+      correctAnswer: correct ? null : animal.name,
     );
   }
 
