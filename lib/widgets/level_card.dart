@@ -81,7 +81,7 @@ class _LevelCardState extends State<LevelCard> {
                             const SizedBox(height: 8),
                             Expanded(
                               child: Text(
-                                'level_display'.tr(args: [widget.level.id.toString(), widget.level.title]),
+                                widget.level.title,
                                 style: GoogleFonts.nunito(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,

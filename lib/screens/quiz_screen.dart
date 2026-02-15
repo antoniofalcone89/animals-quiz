@@ -94,12 +94,12 @@ class _QuizScreenState extends State<QuizScreen> {
         _sessionCorrect++;
       });
     } else {
+      _controller.clear();
+      _focusNode.requestFocus();
       setState(() => _showWrongMessage = true);
       Future.delayed(const Duration(seconds: 3), () {
         if (!mounted) return;
-        _controller.clear();
         setState(() => _showWrongMessage = false);
-        _focusNode.requestFocus();
       });
     }
   }
@@ -161,7 +161,7 @@ class _QuizScreenState extends State<QuizScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           children: [
-            AnimalEmojiCard(emoji: animal.emoji ?? '\u{2753}'),
+            AnimalEmojiCard(emoji: animal.emoji ?? '\u{2753}', imageUrl: animal.imageUrl),
             const SizedBox(height: 28),
             Text(
               'what_animal'.tr(),
