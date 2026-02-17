@@ -15,4 +15,6 @@ abstract class QuizRepository {
   Future<Map<int, List<bool>>> getUserProgress();
 
   Future<int> getUserCoins();
+
+  Future<int> spendCoins(int amount);
 }

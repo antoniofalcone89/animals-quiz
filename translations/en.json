@@ -35,5 +35,10 @@
   "or_divider": "OR",
   "name_required": "Please enter your name to continue",
   "guest_login": "CONTINUE AS GUEST",
-  "already_guessed": "You already guessed this one!"
+  "already_guessed": "You already guessed this one!",
+  "hint_button": "HINT",
+  "hint_cost": "{} coins",
+  "not_enough_coins": "Not enough coins!",
+  "did_you_know": "Did you know?",
+  "hints_used": "Hint {}/{}"
 }

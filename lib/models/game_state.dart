@@ -5,6 +5,8 @@ import 'level.dart';
 import '../repositories/quiz_repository.dart';
 
 class GameState extends ChangeNotifier {
+  static const List<int> hintCosts = [5, 10, 20];
+
   final QuizRepository _quizRepository;
 
   String _username = 'Guest';
@@ -103,5 +105,16 @@ class GameState extends ChangeNotifier {
   bool isLevelUnlocked(int levelId) {
     if (levelId <= 1) return true;
     return getLevelProgress(levelId - 1) >= 0.8;
+  }
+
+  Future<bool> spendCoins(int amount) async {
+    if (_totalCoins < amount) return false;
+    try {
+      _totalCoins = await _quizRepository.spendCoins(amount);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

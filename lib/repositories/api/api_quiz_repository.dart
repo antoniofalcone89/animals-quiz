@@ -54,4 +54,12 @@ class ApiQuizRepository implements QuizRepository {
     final json = await _client.get('/users/me/coins');
     return json['totalCoins'] as int;
   }
+
+  @override
+  Future<int> spendCoins(int amount) async {
+    final json = await _client.post('/users/me/spend-coins', body: {
+      'amount': amount,
+    });
+    return json['totalCoins'] as int;
+  }
 }

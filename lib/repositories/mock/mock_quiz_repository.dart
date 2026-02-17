@@ -53,4 +53,10 @@ class MockQuizRepository implements QuizRepository {
   Future<int> getUserCoins() async {
     return _coins;
   }
+
+  @override
+  Future<int> spendCoins(int amount) async {
+    _coins -= amount;
+    return _coins;
+  }
 }

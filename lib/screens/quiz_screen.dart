@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
 import '../widgets/coin_badge.dart';
 import '../widgets/quiz_feedback.dart';
+import '../widgets/quiz_hint_section.dart';
 import '../widgets/quiz_input_section.dart';
 import '../widgets/quiz_results.dart';
 
@@ -36,6 +39,8 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _showResults = false;
   bool _hasText = false;
   String? _revealedName;
+  int _hintsRevealed = 0;
+  String? _currentFunFact;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -75,6 +80,36 @@ class _QuizScreenState extends State<QuizScreen> {
     );
   }
 
+  Future<void> _useHint() async {
+    final animal = widget.level.animals[_questionOrder[_currentIndex]];
+    if (_hintsRevealed >= animal.hints.length) return;
+
+    final cost = GameState.hintCosts[_hintsRevealed];
+    if (widget.gameState.totalCoins < cost) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final success = await widget.gameState.spendCoins(cost);
+    if (!mounted) return;
+
+    if (success) {
+      setState(() => _hintsRevealed++);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _onSubmit() async {
     final guess = _controller.text.trim();
     if (guess.isEmpty || _answered || _showWrongMessage) return;
@@ -87,11 +122,16 @@ class _QuizScreenState extends State<QuizScreen> {
 
     if (result.correct) {
       final animal = widget.level.animals[_questionOrder[_currentIndex]];
+      String? funFact;
+      if (animal.funFacts.isNotEmpty) {
+        funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
+      }
       setState(() {
         _answered = true;
         _revealedName = animal.name;
         _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
+        _currentFunFact = funFact;
       });
     } else {
       _controller.clear();
@@ -115,6 +155,8 @@ class _QuizScreenState extends State<QuizScreen> {
       _answered = false;
       _showWrongMessage = false;
       _revealedName = null;
+      _hintsRevealed = 0;
+      _currentFunFact = null;
     });
   }
 
@@ -135,6 +177,10 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final animal = widget.level.animals[_questionOrder[_currentIndex]];
     final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
+
+    final int? nextHintCost = _hintsRevealed < animal.hints.length
+        ? GameState.hintCosts[_hintsRevealed]
+        : null;
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -172,6 +218,16 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            if (!alreadyGuessed && !_answered && animal.hints.isNotEmpty)
+              QuizHintSection(
+                hints: animal.hints,
+                hintsRevealed: _hintsRevealed,
+                nextHintCost: nextHintCost,
+                canAfford: nextHintCost != null &&
+                    widget.gameState.totalCoins >= nextHintCost,
+                onRequestHint: _useHint,
+                enabled: !_answered && !alreadyGuessed,
+              ),
             const SizedBox(height: 16),
             QuizInputSection(
               hint: _buildHint(animal.name),
@@ -189,6 +245,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 showWrongMessage: _showWrongMessage,
                 answered: _answered,
                 onNext: _next,
+                funFact: _currentFunFact,
               ),
             if (alreadyGuessed) ...[
               const SizedBox(height: 24),
