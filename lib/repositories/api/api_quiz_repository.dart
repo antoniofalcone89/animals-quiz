@@ -1,4 +1,5 @@
 import '../../models/answer_result.dart';
+import '../../models/buy_hint_result.dart';
 import '../../models/level.dart';
 import '../../services/api_client.dart';
 import '../quiz_repository.dart';
@@ -50,16 +51,34 @@ class ApiQuizRepository implements QuizRepository {
   }
 
   @override
+  Future<Map<int, List<int>>> getHintsProgress() async {
+    final json = await _client.get('/users/me/progress');
+    final levels = json['levels'] as Map<String, dynamic>;
+    return levels.map((key, value) {
+      final animals = value as List<dynamic>;
+      final hintsList = animals.map((a) {
+        if (a is bool) return 0;
+        return (a as Map<String, dynamic>)['hintsRevealed'] as int? ?? 0;
+      }).toList();
+      return MapEntry(int.parse(key), hintsList);
+    });
+  }
+
+  @override
   Future<int> getUserCoins() async {
     final json = await _client.get('/users/me/coins');
     return json['totalCoins'] as int;
   }
 
   @override
-  Future<int> spendCoins(int amount) async {
-    final json = await _client.post('/users/me/spend-coins', body: {
-      'amount': amount,
+  Future<BuyHintResult> buyHint({
+    required int levelId,
+    required int animalIndex,
+  }) async {
+    final json = await _client.post('/quiz/buy-hint', body: {
+      'levelId': levelId,
+      'animalIndex': animalIndex,
     });
-    return json['totalCoins'] as int;
+    return BuyHintResult.fromJson(json);
   }
 }

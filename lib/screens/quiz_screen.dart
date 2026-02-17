@@ -39,7 +39,6 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _showResults = false;
   bool _hasText = false;
   String? _revealedName;
-  int _hintsRevealed = 0;
   String? _currentFunFact;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
@@ -73,18 +72,26 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
+  int get _currentAnimalIndex => _questionOrder[_currentIndex];
+
+  int get _hintsRevealed => widget.gameState.getHintsRevealed(
+        widget.level.id,
+        _currentAnimalIndex,
+      );
+
   bool _isCurrentAnimalGuessed() {
     return widget.gameState.isAnimalGuessed(
       widget.level.id,
-      _questionOrder[_currentIndex],
+      _currentAnimalIndex,
     );
   }
 
   Future<void> _useHint() async {
-    final animal = widget.level.animals[_questionOrder[_currentIndex]];
-    if (_hintsRevealed >= animal.hints.length) return;
+    final hintsRevealed = _hintsRevealed;
+    final animal = widget.level.animals[_currentAnimalIndex];
+    if (hintsRevealed >= animal.hints.length) return;
 
-    final cost = GameState.hintCosts[_hintsRevealed];
+    final cost = GameState.hintCosts[hintsRevealed];
     if (widget.gameState.totalCoins < cost) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -95,18 +102,21 @@ class _QuizScreenState extends State<QuizScreen> {
       return;
     }
 
-    final success = await widget.gameState.spendCoins(cost);
+    final result = await widget.gameState.buyHint(
+      widget.level.id,
+      _currentAnimalIndex,
+    );
     if (!mounted) return;
 
-    if (success) {
-      setState(() => _hintsRevealed++);
-    } else {
+    if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('not_enough_coins'.tr()),
           duration: const Duration(seconds: 2),
         ),
       );
+    } else {
+      setState(() {});
     }
   }
 
@@ -116,12 +126,12 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final result = await widget.gameState.submitAnswer(
       widget.level.id,
-      _questionOrder[_currentIndex],
+      _currentAnimalIndex,
       guess,
     );
 
     if (result.correct) {
-      final animal = widget.level.animals[_questionOrder[_currentIndex]];
+      final animal = widget.level.animals[_currentAnimalIndex];
       String? funFact;
       if (animal.funFacts.isNotEmpty) {
         funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
@@ -155,7 +165,6 @@ class _QuizScreenState extends State<QuizScreen> {
       _answered = false;
       _showWrongMessage = false;
       _revealedName = null;
-      _hintsRevealed = 0;
       _currentFunFact = null;
     });
   }
@@ -175,11 +184,12 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
 
-    final animal = widget.level.animals[_questionOrder[_currentIndex]];
+    final animal = widget.level.animals[_currentAnimalIndex];
     final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
+    final hintsRevealed = _hintsRevealed;
 
-    final int? nextHintCost = _hintsRevealed < animal.hints.length
-        ? GameState.hintCosts[_hintsRevealed]
+    final int? nextHintCost = hintsRevealed < animal.hints.length
+        ? GameState.hintCosts[hintsRevealed]
         : null;
 
     return Scaffold(
@@ -221,7 +231,7 @@ class _QuizScreenState extends State<QuizScreen> {
             if (!alreadyGuessed && !_answered && animal.hints.isNotEmpty)
               QuizHintSection(
                 hints: animal.hints,
-                hintsRevealed: _hintsRevealed,
+                hintsRevealed: hintsRevealed,
                 nextHintCost: nextHintCost,
                 canAfford: nextHintCost != null &&
                     widget.gameState.totalCoins >= nextHintCost,
