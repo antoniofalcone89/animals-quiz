@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../config/env.dart';
 import '../theme/app_theme.dart';
+import 'shimmer_loading.dart';
 
 class AnimalEmojiCard extends StatelessWidget {
   final String emoji;
@@ -43,13 +45,21 @@ class AnimalEmojiCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: resolvedUrl != null
-            ? Image.network(
-                resolvedUrl,
+            ? CachedNetworkImage(
+                imageUrl: resolvedUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _emojiFallback(),
+                placeholder: (context, url) => _skeletonLoader(),
+                errorWidget: (context, url, error) => _emojiFallback(),
               )
             : _emojiFallback(),
       ),
+    );
+  }
+
+  Widget _skeletonLoader() {
+    return ShimmerLoading(
+      baseColor: const Color(0xFFE0E0E0),
+      highlightColor: const Color(0xFFF5F5F5),
     );
   }
 
@@ -65,9 +75,7 @@ class AnimalEmojiCard extends StatelessWidget {
           ],
         ),
       ),
-      child: Center(
-        child: Text(emoji, style: const TextStyle(fontSize: 90)),
-      ),
+      child: Center(child: Text(emoji, style: const TextStyle(fontSize: 90))),
     );
   }
 }

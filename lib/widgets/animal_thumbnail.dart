@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/env.dart';
 import '../models/animal.dart';
 import '../theme/app_theme.dart';
+import 'shimmer_loading.dart';
 
 class AnimalThumbnail extends StatefulWidget {
   final Animal animal;
@@ -72,20 +74,26 @@ class _AnimalThumbnailState extends State<AnimalThumbnail> {
                           : AppColors.deepPurple.withValues(alpha: 0.05),
                     ),
                     child: hasImage
-                        ? Image.network(
-                            resolvedUrl,
+                        ? CachedNetworkImage(
+                            imageUrl: resolvedUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _emojiPlaceholder(widget.guessed),
+                            placeholder: (context, url) =>
+                                _skeletonLoader(widget.guessed),
+                            errorWidget: (context, url, error) =>
+                                _emojiPlaceholder(widget.guessed),
                           )
                         : widget.guessed
-                            ? _emojiPlaceholder(true)
-                            : _unguessedPlaceholder(),
+                        ? _emojiPlaceholder(true)
+                        : _unguessedPlaceholder(),
                   ),
                 ),
                 // Label area
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border(
@@ -107,11 +115,17 @@ class _AnimalThumbnailState extends State<AnimalThumbnail> {
                             color: AppColors.correctGreen,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check, color: Colors.white, size: 12),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 12,
+                          ),
                         ),
                       Expanded(
                         child: Text(
-                          widget.guessed ? widget.animal.name : '#${widget.index + 1}',
+                          widget.guessed
+                              ? widget.animal.name
+                              : '#${widget.index + 1}',
                           style: GoogleFonts.nunito(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -131,6 +145,13 @@ class _AnimalThumbnailState extends State<AnimalThumbnail> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _skeletonLoader(bool guessed) {
+    return ShimmerLoading(
+      baseColor: const Color(0xFFE0E0E0),
+      highlightColor: const Color(0xFFF5F5F5),
     );
   }
 
