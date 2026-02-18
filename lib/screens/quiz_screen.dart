@@ -138,7 +138,7 @@ class _QuizScreenState extends State<QuizScreen> {
       }
       setState(() {
         _answered = true;
-        _revealedName = animal.name;
+        _revealedName = result.correctAnswer ?? animal.name;
         _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
         _currentFunFact = funFact;
@@ -170,7 +170,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   String _buildHint(String name) {
-    return name.split('').map((_) => '_').join(' ');
+    return name.split(' ').map((word) => word.split('').map((_) => '_').join(' ')).join('   ');
   }
 
   @override

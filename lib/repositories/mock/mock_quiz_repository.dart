@@ -3,6 +3,7 @@ import '../../models/answer_result.dart';
 import '../../models/buy_hint_result.dart';
 import '../../models/game_state.dart';
 import '../../models/level.dart';
+import '../../utils/string_similarity.dart';
 import '../quiz_repository.dart';
 
 class MockQuizRepository implements QuizRepository {
@@ -28,8 +29,7 @@ class MockQuizRepository implements QuizRepository {
   }) async {
     final level = quizLevels.firstWhere((l) => l.id == levelId);
     final animal = level.animals[animalIndex];
-    final correctName = animal.name.toLowerCase();
-    final correct = answer.trim().toLowerCase() == correctName;
+    final correct = isFuzzyMatch(answer, animal.name);
 
     int coinsAwarded = 0;
     if (correct) {
@@ -43,7 +43,7 @@ class MockQuizRepository implements QuizRepository {
       correct: correct,
       coinsAwarded: coinsAwarded,
       totalCoins: _coins,
-      correctAnswer: correct ? null : animal.name,
+      correctAnswer: animal.name,
     );
   }
 
