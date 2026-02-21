@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'answer_result.dart';
 import 'buy_hint_result.dart';
 import 'level.dart';
+import '../config/env.dart';
 import '../repositories/quiz_repository.dart';
 
 class GameState extends ChangeNotifier {
@@ -19,7 +20,7 @@ class GameState extends ChangeNotifier {
   String? _error;
 
   GameState({required QuizRepository quizRepository})
-      : _quizRepository = quizRepository;
+    : _quizRepository = quizRepository;
 
   String get username => _username;
   int get totalCoins => _totalCoins;
@@ -76,7 +77,11 @@ class GameState extends ChangeNotifier {
     }
   }
 
-  Future<AnswerResult> submitAnswer(int levelId, int animalIndex, String answer) async {
+  Future<AnswerResult> submitAnswer(
+    int levelId,
+    int animalIndex,
+    String answer,
+  ) async {
     final result = await _quizRepository.submitAnswer(
       levelId: levelId,
       animalIndex: animalIndex,
@@ -107,7 +112,10 @@ class GameState extends ChangeNotifier {
       _totalCoins = result.totalCoins;
       _hintsProgress.putIfAbsent(
         levelId,
-        () => List.filled(levels.firstWhere((l) => l.id == levelId).animals.length, 0),
+        () => List.filled(
+          levels.firstWhere((l) => l.id == levelId).animals.length,
+          0,
+        ),
       );
       _hintsProgress[levelId]![animalIndex] = result.hintsRevealed;
       notifyListeners();
@@ -138,6 +146,9 @@ class GameState extends ChangeNotifier {
   }
 
   bool isLevelUnlocked(int levelId) {
+    // Debug mode: unlock all levels
+    if (Env.debugUnlockAll) return true;
+
     if (levelId <= 1) return true;
     return getLevelProgress(levelId - 1) >= 0.8;
   }
