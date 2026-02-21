@@ -35,7 +35,9 @@ class ServiceLocator {
     } else {
       final client = ApiClient(baseUrl: Env.apiUrl);
       client.setTokenProvider(
-        () async => FirebaseAuth.instance.currentUser?.getIdToken(),
+        () async => FirebaseAuth.instance.currentUser
+            ?.getIdToken()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null),
       );
       _apiClient = client;
       authRepository = FirebaseAuthRepository(client);

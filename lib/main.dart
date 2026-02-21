@@ -13,11 +13,25 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (!Env.isMock) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } on FirebaseException catch (e) {
+      // On iOS, Firebase auto-initializes via GoogleService-Info.plist before
+      // Dart starts, so a duplicate-app error here is expected and safe to ignore.
+      if (e.code != 'duplicate-app') {
+        debugPrint('Firebase init error: $e');
+      }
+    } catch (e) {
+      debugPrint('Firebase init error: $e');
+    }
     if (kIsWeb) {
-      await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      try {
+        await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
+      } catch (e) {
+        debugPrint('Firebase persistence error: $e');
+      }
     }
   }
 
@@ -46,7 +60,8 @@ class AnimalQuizApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       localizationsDelegates: localization?.delegates,
-      supportedLocales: localization?.supportedLocales ?? const [Locale('it'), Locale('en')],
+      supportedLocales:
+          localization?.supportedLocales ?? const [Locale('it'), Locale('en')],
       locale: localization?.locale,
       home: const SplashScreen(),
     );

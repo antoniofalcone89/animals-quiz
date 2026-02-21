@@ -40,7 +40,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // User has a Firebase session — try to restore their profile
     try {
-      final user = await authRepo.getCurrentUser();
+      final user = await authRepo.getCurrentUser()
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
       if (user != null && mounted) {
         final gameState = GameState(quizRepository: sl.quizRepository);
         final username = authRepo.displayName ?? user.username;
