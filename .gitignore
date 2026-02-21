@@ -48,4 +48,5 @@ app.*.map.json
 .env
 .vscode/
 
-docs/
+docs/ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
