@@ -4,21 +4,30 @@ import 'package:http/http.dart' as http;
 
 class ApiClient {
   final String baseUrl;
-  String? _token;
+  Future<String?> Function()? _tokenProvider;
+  String _locale = 'it';
 
   ApiClient({required this.baseUrl});
 
-  void setToken(String? token) {
-    _token = token;
+  void setTokenProvider(Future<String?> Function() provider) {
+    _tokenProvider = provider;
   }
 
-  Map<String, String> get _headers {
+  void setLocale(String locale) {
+    _locale = locale;
+  }
+
+  Future<Map<String, String>> _headers() async {
     final headers = <String, String>{
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Accept-Language': _locale,
     };
-    if (_token != null) {
-      headers['Authorization'] = 'Bearer $_token';
+    if (_tokenProvider != null) {
+      final token = await _tokenProvider!();
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
     }
     return headers;
   }
@@ -26,15 +35,25 @@ class ApiClient {
   Future<Map<String, dynamic>> get(String path) async {
     final response = await http.get(
       Uri.parse('$baseUrl$path'),
-      headers: _headers,
+      headers: await _headers(),
     );
+    return _handleResponse(response);
+  }
+
+  /// Like [get], but returns null on 404 instead of throwing.
+  Future<Map<String, dynamic>?> getOrNull(String path) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl$path'),
+      headers: await _headers(),
+    );
+    if (response.statusCode == 404) return null;
     return _handleResponse(response);
   }
 
   Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? body}) async {
     final response = await http.post(
       Uri.parse('$baseUrl$path'),
-      headers: _headers,
+      headers: await _headers(),
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response);
@@ -43,7 +62,7 @@ class ApiClient {
   Future<Map<String, dynamic>> patch(String path, {Map<String, dynamic>? body}) async {
     final response = await http.patch(
       Uri.parse('$baseUrl$path'),
-      headers: _headers,
+      headers: await _headers(),
       body: body != null ? jsonEncode(body) : null,
     );
     return _handleResponse(response);

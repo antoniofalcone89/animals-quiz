@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
 import '../widgets/coin_badge.dart';
 import '../widgets/quiz_feedback.dart';
+import '../widgets/quiz_hint_section.dart';
 import '../widgets/quiz_input_section.dart';
 import '../widgets/quiz_results.dart';
 
@@ -35,6 +38,8 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _showWrongMessage = false;
   bool _showResults = false;
   bool _hasText = false;
+  String? _revealedName;
+  String? _currentFunFact;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -67,29 +72,84 @@ class _QuizScreenState extends State<QuizScreen> {
     super.dispose();
   }
 
+  int get _currentAnimalIndex => _questionOrder[_currentIndex];
+
+  int get _hintsRevealed => widget.gameState.getHintsRevealed(
+        widget.level.id,
+        _currentAnimalIndex,
+      );
+
+  bool _isCurrentAnimalGuessed() {
+    return widget.gameState.isAnimalGuessed(
+      widget.level.id,
+      _currentAnimalIndex,
+    );
+  }
+
+  Future<void> _useHint() async {
+    final hintsRevealed = _hintsRevealed;
+    final animal = widget.level.animals[_currentAnimalIndex];
+    if (hintsRevealed >= animal.hints.length) return;
+
+    final cost = GameState.hintCosts[hintsRevealed];
+    if (widget.gameState.totalCoins < cost) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final result = await widget.gameState.buyHint(
+      widget.level.id,
+      _currentAnimalIndex,
+    );
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      setState(() {});
+    }
+  }
+
   Future<void> _onSubmit() async {
     final guess = _controller.text.trim();
     if (guess.isEmpty || _answered || _showWrongMessage) return;
 
     final result = await widget.gameState.submitAnswer(
       widget.level.id,
-      _questionOrder[_currentIndex],
+      _currentAnimalIndex,
       guess,
     );
 
     if (result.correct) {
+      final animal = widget.level.animals[_currentAnimalIndex];
+      String? funFact;
+      if (animal.funFacts.isNotEmpty) {
+        funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
+      }
       setState(() {
         _answered = true;
+        _revealedName = result.correctAnswer ?? animal.name;
         _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
+        _currentFunFact = funFact;
       });
     } else {
+      _controller.clear();
+      _focusNode.requestFocus();
       setState(() => _showWrongMessage = true);
       Future.delayed(const Duration(seconds: 3), () {
         if (!mounted) return;
-        _controller.clear();
         setState(() => _showWrongMessage = false);
-        _focusNode.requestFocus();
       });
     }
   }
@@ -104,11 +164,13 @@ class _QuizScreenState extends State<QuizScreen> {
       _currentIndex++;
       _answered = false;
       _showWrongMessage = false;
+      _revealedName = null;
+      _currentFunFact = null;
     });
   }
 
   String _buildHint(String name) {
-    return name.split('').map((_) => '_').join(' ');
+    return name.split(' ').map((word) => word.split('').map((_) => '_').join(' ')).join('   ');
   }
 
   @override
@@ -122,7 +184,13 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     }
 
-    final animal = widget.level.animals[_questionOrder[_currentIndex]];
+    final animal = widget.level.animals[_currentAnimalIndex];
+    final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
+    final hintsRevealed = _hintsRevealed;
+
+    final int? nextHintCost = hintsRevealed < animal.hints.length
+        ? GameState.hintCosts[hintsRevealed]
+        : null;
 
     return Scaffold(
       backgroundColor: AppColors.lightGrey,
@@ -149,7 +217,7 @@ class _QuizScreenState extends State<QuizScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           children: [
-            AnimalEmojiCard(emoji: animal.emoji),
+            AnimalEmojiCard(emoji: animal.emoji ?? '\u{2753}', imageUrl: animal.imageUrl),
             const SizedBox(height: 28),
             Text(
               'what_animal'.tr(),
@@ -160,21 +228,56 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               textAlign: TextAlign.center,
             ),
+            if (!alreadyGuessed && !_answered && animal.hints.isNotEmpty)
+              QuizHintSection(
+                hints: animal.hints,
+                hintsRevealed: hintsRevealed,
+                nextHintCost: nextHintCost,
+                canAfford: nextHintCost != null &&
+                    widget.gameState.totalCoins >= nextHintCost,
+                onRequestHint: _useHint,
+                enabled: !_answered && !alreadyGuessed,
+              ),
             const SizedBox(height: 16),
             QuizInputSection(
-              hint: _buildHint(animal.translationKey.tr()),
+              hint: _buildHint(animal.name),
+              revealedName: alreadyGuessed ? animal.name : _revealedName,
+              alreadyGuessed: alreadyGuessed,
               controller: _controller,
               focusNode: _focusNode,
-              enabled: !_answered,
+              enabled: !_answered && !alreadyGuessed,
               questionIndex: _currentIndex,
-              canSubmit: _hasText && !_answered && !_showWrongMessage,
+              canSubmit: _hasText && !_answered && !_showWrongMessage && !alreadyGuessed,
               onSubmit: _onSubmit,
             ),
-            QuizFeedback(
-              showWrongMessage: _showWrongMessage,
-              answered: _answered,
-              onNext: _next,
-            ),
+            if (!alreadyGuessed)
+              QuizFeedback(
+                showWrongMessage: _showWrongMessage,
+                answered: _answered,
+                onNext: _next,
+                funFact: _currentFunFact,
+              ),
+            if (alreadyGuessed) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _next,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.deepPurple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Text(
+                    'next'.tr(),
+                    style: GoogleFonts.nunito(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

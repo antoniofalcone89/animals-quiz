@@ -1,10 +1,27 @@
 import '../models/animal.dart';
 import '../models/level.dart';
 
-Animal _animal(String name, String emoji) => Animal(
+Animal _animal(
+  String name,
+  String emoji, {
+  List<String>? hints,
+  List<String>? funFacts,
+}) =>
+    Animal(
       name: name,
       emoji: emoji,
       imageUrl: 'https://placehold.co/300x300/6C3FC5/white?text=$name',
+      hints: hints ??
+          [
+            'This animal starts with "${name[0]}"',
+            'It has ${name.length} letters in its name',
+            'The name is "$name"',
+          ],
+      funFacts: funFacts ??
+          [
+            'The $name is a fascinating creature!',
+            '$name can be found in various habitats around the world.',
+          ],
     );
 
 final List<Level> quizLevels = [

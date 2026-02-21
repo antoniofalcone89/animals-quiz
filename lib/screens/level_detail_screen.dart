@@ -1,4 +1,3 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/game_state.dart';
@@ -47,7 +46,7 @@ class _LevelDetailScreenState extends State<LevelDetailScreen> {
         backgroundColor: AppColors.deepPurple,
         foregroundColor: Colors.white,
         title: Text(
-          'level_display'.tr(args: [widget.level.id.toString(), widget.level.titleKey.tr()]),
+          widget.level.title,
           style: GoogleFonts.nunito(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         actions: [
@@ -63,9 +62,9 @@ class _LevelDetailScreenState extends State<LevelDetailScreen> {
           itemCount: widget.level.animals.length,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            childAspectRatio: 0.9,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            childAspectRatio: 0.75,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
           ),
           itemBuilder: (context, index) {
             final animal = widget.level.animals[index];

@@ -7,12 +7,14 @@ class QuizFeedback extends StatelessWidget {
   final bool showWrongMessage;
   final bool answered;
   final VoidCallback onNext;
+  final String? funFact;
 
   const QuizFeedback({
     super.key,
     required this.showWrongMessage,
     required this.answered,
     required this.onNext,
+    this.funFact,
   });
 
   @override
@@ -57,6 +59,54 @@ class QuizFeedback extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           ),
+          if (funFact != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.amber.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '\u{1F4D6}',
+                    style: TextStyle(fontSize: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'did_you_know'.tr(),
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.amber[800],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          funFact!,
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.amber[900],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,

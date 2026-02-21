@@ -6,11 +6,15 @@ import '../theme/app_theme.dart';
 class ProfileView extends StatelessWidget {
   final String username;
   final int totalCoins;
+  final VoidCallback? onLogout;
+  final ValueChanged<String>? onLocaleChanged;
 
   const ProfileView({
     super.key,
     required this.username,
     required this.totalCoins,
+    this.onLogout,
+    this.onLocaleChanged,
   });
 
   @override
@@ -94,7 +98,9 @@ class ProfileView extends StatelessWidget {
                 ],
                 selected: {currentLocale.languageCode},
                 onSelectionChanged: (selected) {
-                  context.setLocale(Locale(selected.first));
+                  final locale = selected.first;
+                  context.setLocale(Locale(locale));
+                  onLocaleChanged?.call(locale);
                 },
                 style: ButtonStyle(
                   backgroundColor: WidgetStateProperty.resolveWith((states) {
@@ -111,6 +117,31 @@ class ProfileView extends StatelessWidget {
                   }),
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                'logout'.tr(),
+                style: GoogleFonts.nunito(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.red,
+                ),
+              ),
+              onTap: onLogout,
             ),
           ),
         ],

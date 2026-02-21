@@ -1,9 +1,10 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import '../repositories/api/api_auth_repository.dart';
+import '../config/env.dart';
 import '../repositories/api/api_leaderboard_repository.dart';
 import '../repositories/api/api_quiz_repository.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/firebase/firebase_auth_repository.dart';
 import '../repositories/leaderboard_repository.dart';
 import '../repositories/mock/mock_auth_repository.dart';
 import '../repositories/mock/mock_leaderboard_repository.dart';
@@ -19,6 +20,7 @@ class ServiceLocator {
   late final QuizRepository quizRepository;
   late final LeaderboardRepository leaderboardRepository;
 
+  ApiClient? _apiClient;
   bool _initialized = false;
 
   ServiceLocator._();
@@ -26,19 +28,37 @@ class ServiceLocator {
   void initialize() {
     if (_initialized) return;
 
-    final useMock = dotenv.env['USE_MOCK']?.toLowerCase() == 'true';
-
-    if (useMock) {
+    if (Env.isMock) {
       authRepository = MockAuthRepository();
       quizRepository = MockQuizRepository();
       leaderboardRepository = MockLeaderboardRepository();
     } else {
-      final baseUrl = dotenv.env['API_BASE_URL'] ?? 'https://api.example.com/api/v1';
-      final client = ApiClient(baseUrl: baseUrl);
-      authRepository = ApiAuthRepository(client);
+      final client = ApiClient(baseUrl: Env.apiUrl);
+      client.setTokenProvider(
+        () async => FirebaseAuth.instance.currentUser
+            ?.getIdToken()
+            .timeout(const Duration(seconds: 5), onTimeout: () => null),
+      );
+      _apiClient = client;
+      authRepository = FirebaseAuthRepository(client);
       quizRepository = ApiQuizRepository(client);
       leaderboardRepository = ApiLeaderboardRepository(client);
     }
+
+    _initialized = true;
+  }
+
+  void setLocale(String locale) {
+    _apiClient?.setLocale(locale);
+  }
+
+  /// For tests — always uses mock repositories, skips Firebase.
+  void initializeForTest() {
+    if (_initialized) return;
+
+    authRepository = MockAuthRepository();
+    quizRepository = MockQuizRepository();
+    leaderboardRepository = MockLeaderboardRepository();
 
     _initialized = true;
   }

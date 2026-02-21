@@ -75,13 +75,13 @@ class _LevelCardState extends State<LevelCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.level.emoji,
+                              widget.level.emoji ?? '\u{1F43E}',
                               style: const TextStyle(fontSize: 32),
                             ),
                             const SizedBox(height: 8),
                             Expanded(
                               child: Text(
-                                'level_display'.tr(args: [widget.level.id.toString(), widget.level.titleKey.tr()]),
+                                widget.level.title,
                                 style: GoogleFonts.nunito(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
