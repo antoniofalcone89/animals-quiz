@@ -1,40 +1,136 @@
+import 'dart:math';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
-class QuizInputSection extends StatelessWidget {
-  final String hint;
+class QuizInputSection extends StatefulWidget {
+  final String animalName;
   final String? revealedName;
   final bool alreadyGuessed;
   final TextEditingController controller;
   final FocusNode focusNode;
   final bool enabled;
   final int questionIndex;
-  final bool canSubmit;
+  final bool showError;
   final VoidCallback onSubmit;
 
   const QuizInputSection({
     super.key,
-    required this.hint,
+    required this.animalName,
     this.revealedName,
     this.alreadyGuessed = false,
     required this.controller,
     required this.focusNode,
     required this.enabled,
     required this.questionIndex,
-    required this.canSubmit,
+    this.showError = false,
     required this.onSubmit,
   });
 
   @override
+  State<QuizInputSection> createState() => _QuizInputSectionState();
+}
+
+class _QuizInputSectionState extends State<QuizInputSection>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shakeController;
+
+  int get _letterCount => widget.animalName.replaceAll(' ', '').length;
+
+  @override
+  void initState() {
+    super.initState();
+    _shakeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    widget.controller.addListener(_onInput);
+  }
+
+  @override
+  void didUpdateWidget(QuizInputSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.showError && !oldWidget.showError) {
+      _shakeController.forward(from: 0);
+    }
+    if (widget.controller != oldWidget.controller) {
+      oldWidget.controller.removeListener(_onInput);
+      widget.controller.addListener(_onInput);
+    }
+  }
+
+  void _onInput() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onInput);
+    _shakeController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildCharacterDisplay() {
+    final name = widget.animalName;
+    final typed = widget.controller.text;
+    int typedIdx = 0;
+
+    final List<TextSpan> spans = [];
+    final words = name.split(' ');
+
+    for (int w = 0; w < words.length; w++) {
+      if (w > 0) {
+        spans.add(const TextSpan(text: '   '));
+      }
+
+      final letters = words[w].split('');
+      for (int l = 0; l < letters.length; l++) {
+        if (l > 0) {
+          spans.add(const TextSpan(text: ' '));
+        }
+
+        final hasChar = typedIdx < typed.length;
+        final char = hasChar ? typed[typedIdx] : '_';
+
+        Color color;
+        if (widget.showError && hasChar) {
+          color = Colors.red.shade600;
+        } else if (hasChar) {
+          color = AppColors.deepPurple;
+        } else {
+          color = Colors.grey.shade400;
+        }
+
+        spans.add(TextSpan(
+          text: char,
+          style: TextStyle(color: color),
+        ));
+
+        typedIdx++;
+      }
+    }
+
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: GoogleFonts.nunito(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+        ),
+        children: spans,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final showName = alreadyGuessed || revealedName != null;
-    final displayName = revealedName ?? '';
+    final showName = widget.alreadyGuessed || widget.revealedName != null;
 
     return Column(
       children: [
-        // Hint / revealed name
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 500),
           switchInCurve: Curves.easeOutBack,
@@ -47,7 +143,9 @@ class QuizInputSection extends StatelessWidget {
           },
           child: showName
               ? Text(
-                  alreadyGuessed ? displayName : revealedName!,
+                  widget.alreadyGuessed
+                      ? (widget.revealedName ?? '')
+                      : widget.revealedName!,
                   key: const ValueKey('revealed'),
                   style: GoogleFonts.nunito(
                     fontSize: 28,
@@ -57,23 +155,62 @@ class QuizInputSection extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 )
-              : Text(
-                  hint,
-                  key: const ValueKey('hint'),
-                  style: GoogleFonts.nunito(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey,
-                    letterSpacing: 4,
+              : AnimatedBuilder(
+                  key: ValueKey('input_${widget.questionIndex}'),
+                  animation: _shakeController,
+                  builder: (context, child) {
+                    final shakeOffset = _shakeController.isAnimating
+                        ? sin(_shakeController.value * pi * 6) *
+                            8 *
+                            (1 - _shakeController.value)
+                        : 0.0;
+                    return Transform.translate(
+                      offset: Offset(shakeOffset, 0),
+                      child: child,
+                    );
+                  },
+                  child: GestureDetector(
+                    onTap: () {
+                      if (widget.enabled) {
+                        widget.focusNode.requestFocus();
+                      }
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: _buildCharacterDisplay(),
+                        ),
+                        Opacity(
+                          opacity: 0,
+                          child: TextField(
+                            controller: widget.controller,
+                            focusNode: widget.focusNode,
+                            enabled: widget.enabled,
+                            maxLength: _letterCount,
+                            textCapitalization: TextCapitalization.words,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                              LengthLimitingTextInputFormatter(_letterCount),
+                            ],
+                            decoration: const InputDecoration(
+                              counterText: '',
+                              border: InputBorder.none,
+                            ),
+                            onSubmitted: (_) => widget.onSubmit(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
                 ),
         ),
         const SizedBox(height: 24),
-        if (alreadyGuessed) ...[
-          // Already guessed badge
+        if (widget.alreadyGuessed) ...[
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.correctGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
@@ -84,7 +221,11 @@ class QuizInputSection extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.check_circle, color: AppColors.correctGreen, size: 20),
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.correctGreen,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'already_guessed'.tr(),
@@ -95,73 +236,6 @@ class QuizInputSection extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-        ] else ...[
-          // Text input
-          TextField(
-            key: ValueKey('quiz_input_$questionIndex'),
-            controller: controller,
-            focusNode: focusNode,
-            enabled: enabled,
-            textAlign: TextAlign.center,
-            textCapitalization: TextCapitalization.words,
-            style: GoogleFonts.nunito(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-            decoration: InputDecoration(
-              hintText: 'type_answer'.tr(),
-              hintStyle: GoogleFonts.nunito(fontSize: 18, color: Colors.grey),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(
-                  color: AppColors.deepPurple.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(
-                  color: AppColors.deepPurple,
-                  width: 2,
-                ),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-            onSubmitted: (_) => onSubmit(),
-          ),
-          const SizedBox(height: 16),
-          // Submit button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: canSubmit ? onSubmit : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.deepPurple,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppColors.deepPurple.withValues(
-                  alpha: 0.4,
-                ),
-                disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(
-                'submit'.tr(),
-                style: GoogleFonts.nunito(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
             ),
           ),
         ],

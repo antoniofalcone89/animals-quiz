@@ -58,9 +58,20 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _onTextChanged() {
-    final hasText = _controller.text.trim().isNotEmpty;
+    final text = _controller.text;
+    final hasText = text.trim().isNotEmpty;
     if (hasText != _hasText) {
       setState(() => _hasText = hasText);
+    }
+    // Auto-submit when typed letter count matches the animal name letter count
+    final animal = widget.level.animals[_currentAnimalIndex];
+    final letterCount = animal.name.replaceAll(' ', '').length;
+    if (text.length >= letterCount &&
+        hasText &&
+        !_answered &&
+        !_showWrongMessage &&
+        !_isCurrentAnimalGuessed()) {
+      _onSubmit();
     }
   }
 
@@ -120,9 +131,26 @@ class _QuizScreenState extends State<QuizScreen> {
     }
   }
 
+  String _insertSpaces(String typed, String name) {
+    final buffer = StringBuffer();
+    int typedIdx = 0;
+    for (int i = 0; i < name.length && typedIdx < typed.length; i++) {
+      if (name[i] == ' ') {
+        buffer.write(' ');
+      } else {
+        buffer.write(typed[typedIdx]);
+        typedIdx++;
+      }
+    }
+    return buffer.toString();
+  }
+
   Future<void> _onSubmit() async {
-    final guess = _controller.text.trim();
-    if (guess.isEmpty || _answered || _showWrongMessage) return;
+    final typed = _controller.text.trim();
+    if (typed.isEmpty || _answered || _showWrongMessage) return;
+
+    final animal = widget.level.animals[_currentAnimalIndex];
+    final guess = _insertSpaces(typed, animal.name);
 
     final result = await widget.gameState.submitAnswer(
       widget.level.id,
@@ -144,11 +172,11 @@ class _QuizScreenState extends State<QuizScreen> {
         _currentFunFact = funFact;
       });
     } else {
-      _controller.clear();
-      _focusNode.requestFocus();
       setState(() => _showWrongMessage = true);
-      Future.delayed(const Duration(seconds: 3), () {
+      Future.delayed(const Duration(milliseconds: 800), () {
         if (!mounted) return;
+        _controller.clear();
+        _focusNode.requestFocus();
         setState(() => _showWrongMessage = false);
       });
     }
@@ -167,10 +195,6 @@ class _QuizScreenState extends State<QuizScreen> {
       _revealedName = null;
       _currentFunFact = null;
     });
-  }
-
-  String _buildHint(String name) {
-    return name.split(' ').map((word) => word.split('').map((_) => '_').join(' ')).join('   ');
   }
 
   @override
@@ -240,14 +264,14 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
             const SizedBox(height: 16),
             QuizInputSection(
-              hint: _buildHint(animal.name),
+              animalName: animal.name,
               revealedName: alreadyGuessed ? animal.name : _revealedName,
               alreadyGuessed: alreadyGuessed,
               controller: _controller,
               focusNode: _focusNode,
-              enabled: !_answered && !alreadyGuessed,
+              enabled: !_answered && !alreadyGuessed && !_showWrongMessage,
               questionIndex: _currentIndex,
-              canSubmit: _hasText && !_answered && !_showWrongMessage && !alreadyGuessed,
+              showError: _showWrongMessage,
               onSubmit: _onSubmit,
             ),
             if (!alreadyGuessed)
