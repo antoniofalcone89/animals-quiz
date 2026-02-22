@@ -16,6 +16,7 @@ class QuizInputSection extends StatefulWidget {
   final int questionIndex;
   final bool showError;
   final VoidCallback onSubmit;
+  final List<int> revealedPositions;
 
   const QuizInputSection({
     super.key,
@@ -28,6 +29,7 @@ class QuizInputSection extends StatefulWidget {
     required this.questionIndex,
     this.showError = false,
     required this.onSubmit,
+    this.revealedPositions = const [],
   });
 
   @override
@@ -77,6 +79,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
     final name = widget.animalName;
     final typed = widget.controller.text;
     int typedIdx = 0;
+    int nameIdx = 0;
 
     final List<TextSpan> spans = [];
     final words = name.split(' ');
@@ -84,6 +87,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
     for (int w = 0; w < words.length; w++) {
       if (w > 0) {
         spans.add(const TextSpan(text: '   '));
+        nameIdx++; // account for space in name
       }
 
       final letters = words[w].split('');
@@ -92,24 +96,37 @@ class _QuizInputSectionState extends State<QuizInputSection>
           spans.add(const TextSpan(text: ' '));
         }
 
-        final hasChar = typedIdx < typed.length;
-        final char = hasChar ? typed[typedIdx] : '_';
+        final isRevealed = widget.revealedPositions.contains(nameIdx);
 
-        Color color;
-        if (widget.showError && hasChar) {
-          color = Colors.red.shade600;
-        } else if (hasChar) {
-          color = AppColors.deepPurple;
+        if (isRevealed) {
+          // Show the actual letter in gold
+          spans.add(TextSpan(
+            text: name[nameIdx],
+            style: const TextStyle(color: AppColors.gold),
+          ));
+          typedIdx++;
         } else {
-          color = Colors.grey.shade400;
+          final hasChar = typedIdx < typed.length;
+          final char = hasChar ? typed[typedIdx] : '_';
+
+          Color color;
+          if (widget.showError && hasChar) {
+            color = Colors.red.shade600;
+          } else if (hasChar) {
+            color = AppColors.deepPurple;
+          } else {
+            color = Colors.grey.shade400;
+          }
+
+          spans.add(TextSpan(
+            text: char,
+            style: TextStyle(color: color),
+          ));
+
+          typedIdx++;
         }
 
-        spans.add(TextSpan(
-          text: char,
-          style: TextStyle(color: color),
-        ));
-
-        typedIdx++;
+        nameIdx++;
       }
     }
 

@@ -64,6 +64,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleLinkWithGoogle() async {
+    final authRepo = ServiceLocator.instance.authRepository;
+    try {
+      final success = await authRepo.linkWithGoogle();
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account_linked'.tr()),
+            backgroundColor: AppColors.correctGreen,
+          ),
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account_link_error'.tr()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleLinkWithEmail(String email, String password) async {
+    final authRepo = ServiceLocator.instance.authRepository;
+    try {
+      await authRepo.linkWithEmailPassword(email, password);
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,13 +109,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _currentIndex == 0
             ? _buildHome()
             : _currentIndex == 1
-                ? const LeaderboardView()
-                : ProfileView(
-                    username: widget.gameState.username,
-                    totalCoins: widget.gameState.totalCoins,
-                    onLogout: _handleLogout,
-                    onLocaleChanged: _handleLocaleChanged,
-                  ),
+            ? const LeaderboardView()
+            : ProfileView(
+                username: widget.gameState.username,
+                totalCoins: widget.gameState.totalCoins,
+                isGuest: ServiceLocator.instance.authRepository.isAnonymous,
+                onLogout: _handleLogout,
+                onLocaleChanged: _handleLocaleChanged,
+                onLinkWithGoogle: _handleLinkWithGoogle,
+                onLinkWithEmail: _handleLinkWithEmail,
+              ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -87,9 +127,18 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
         items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: 'home'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.leaderboard_rounded), label: 'leaderboard'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: 'profile'.tr()),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home_rounded),
+            label: 'home'.tr(),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.leaderboard_rounded),
+            label: 'leaderboard'.tr(),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person_rounded),
+            label: 'profile'.tr(),
+          ),
         ],
       ),
     );

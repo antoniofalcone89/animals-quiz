@@ -3,6 +3,7 @@ import '../auth_repository.dart';
 
 class MockAuthRepository implements AuthRepository {
   bool _signedIn = false;
+  bool _isAnonymous = false;
   User? _currentUser;
 
   @override
@@ -14,6 +15,7 @@ class MockAuthRepository implements AuthRepository {
   @override
   Future<void> signInAnonymously() async {
     _signedIn = true;
+    _isAnonymous = true;
   }
 
   @override
@@ -49,4 +51,20 @@ class MockAuthRepository implements AuthRepository {
 
   @override
   String? get displayName => _signedIn ? 'Mock User' : null;
+
+  @override
+  bool get isAnonymous => _isAnonymous;
+
+  @override
+  Future<bool> linkWithGoogle() async {
+    if (!_isAnonymous) return false;
+    _isAnonymous = false;
+    return true;
+  }
+
+  @override
+  Future<void> linkWithEmailPassword(String email, String password) async {
+    if (!_isAnonymous) return;
+    _isAnonymous = false;
+  }
 }

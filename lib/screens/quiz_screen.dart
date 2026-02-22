@@ -9,7 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
 import '../widgets/coin_badge.dart';
 import '../widgets/quiz_feedback.dart';
-import '../widgets/quiz_hint_section.dart';
+import '../widgets/quiz_hint_section.dart' show HintButton, LetterRevealButton, RevealedHints;
 import '../widgets/quiz_input_section.dart';
 import '../widgets/quiz_results.dart';
 
@@ -95,6 +95,42 @@ class _QuizScreenState extends State<QuizScreen> {
       widget.level.id,
       _currentAnimalIndex,
     );
+  }
+
+  int get _lettersRevealed => widget.gameState.getLettersRevealed(
+        widget.level.id,
+        _currentAnimalIndex,
+      );
+
+  Future<void> _useLetterReveal() async {
+    if (_lettersRevealed >= GameState.maxLetterReveals) return;
+
+    if (widget.gameState.totalCoins < GameState.letterRevealCost) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    final result = await widget.gameState.buyLetterReveal(
+      widget.level.id,
+      _currentAnimalIndex,
+    );
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('not_enough_coins'.tr()),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } else {
+      setState(() {});
+    }
   }
 
   Future<void> _useHint() async {
@@ -211,6 +247,12 @@ class _QuizScreenState extends State<QuizScreen> {
     final animal = widget.level.animals[_currentAnimalIndex];
     final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
     final hintsRevealed = _hintsRevealed;
+    final lettersRevealed = _lettersRevealed;
+    final revealedPositions = widget.gameState.getRevealedPositions(
+      widget.level.id,
+      _currentAnimalIndex,
+      animal.name,
+    );
 
     final int? nextHintCost = hintsRevealed < animal.hints.length
         ? GameState.hintCosts[hintsRevealed]
@@ -243,24 +285,49 @@ class _QuizScreenState extends State<QuizScreen> {
           children: [
             AnimalEmojiCard(emoji: animal.emoji ?? '\u{2753}', imageUrl: animal.imageUrl),
             const SizedBox(height: 28),
-            Text(
-              'what_animal'.tr(),
-              style: GoogleFonts.nunito(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppColors.deepPurple,
-              ),
-              textAlign: TextAlign.center,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    'what_animal'.tr(),
+                    style: GoogleFonts.nunito(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.deepPurple,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                if (!alreadyGuessed && !_answered) ...[
+                  if (animal.hints.isNotEmpty) ...[
+                    const SizedBox(width: 10),
+                    HintButton(
+                      hintsRevealed: hintsRevealed,
+                      totalHints: animal.hints.length,
+                      nextHintCost: nextHintCost,
+                      canAfford: nextHintCost != null &&
+                          widget.gameState.totalCoins >= nextHintCost,
+                      onRequestHint: _useHint,
+                      enabled: !_answered && !alreadyGuessed,
+                    ),
+                  ],
+                  const SizedBox(width: 6),
+                  LetterRevealButton(
+                    lettersRevealed: lettersRevealed,
+                    maxReveals: GameState.maxLetterReveals,
+                    cost: GameState.letterRevealCost,
+                    canAfford: widget.gameState.totalCoins >= GameState.letterRevealCost,
+                    onReveal: _useLetterReveal,
+                    enabled: !_answered && !alreadyGuessed,
+                  ),
+                ],
+              ],
             ),
             if (!alreadyGuessed && !_answered && animal.hints.isNotEmpty)
-              QuizHintSection(
+              RevealedHints(
                 hints: animal.hints,
                 hintsRevealed: hintsRevealed,
-                nextHintCost: nextHintCost,
-                canAfford: nextHintCost != null &&
-                    widget.gameState.totalCoins >= nextHintCost,
-                onRequestHint: _useHint,
-                enabled: !_answered && !alreadyGuessed,
               ),
             const SizedBox(height: 16),
             QuizInputSection(
@@ -273,6 +340,7 @@ class _QuizScreenState extends State<QuizScreen> {
               questionIndex: _currentIndex,
               showError: _showWrongMessage,
               onSubmit: _onSubmit,
+              revealedPositions: revealedPositions,
             ),
             if (!alreadyGuessed)
               QuizFeedback(

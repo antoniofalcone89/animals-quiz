@@ -40,5 +40,21 @@
   "hint_cost": "{} monete",
   "not_enough_coins": "Monete insufficienti!",
   "did_you_know": "Lo sapevi?",
-  "hints_used": "Suggerimento {}/{}"
+  "hints_used": "Suggerimento {}/{}",
+  "guest_account": "Account Ospite",
+  "link_account_title": "Collega il Tuo Account",
+  "link_account_description": "Stai giocando come ospite. Collega il tuo account con Google o email per salvare i tuoi progressi in modo permanente e non perderli mai!",
+  "link_with_google": "COLLEGA CON GOOGLE",
+  "link_with_email": "COLLEGA CON EMAIL",
+  "email": "Email",
+  "password": "Password",
+  "confirm_password": "Conferma Password",
+  "link_account": "COLLEGA ACCOUNT",
+  "cancel": "Annulla",
+  "account_linked": "Account collegato con successo!",
+  "account_link_error": "Impossibile collegare l'account. Riprova.",
+  "email_required": "L'email è richiesta",
+  "password_required": "La password è richiesta",
+  "passwords_must_match": "Le password devono corrispondere",
+  "password_min_length": "La password deve essere di almeno 6 caratteri"
 }

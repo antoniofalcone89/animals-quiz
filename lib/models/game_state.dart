@@ -3,11 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'answer_result.dart';
 import 'buy_hint_result.dart';
 import 'level.dart';
+import 'reveal_letter_result.dart';
 import '../config/env.dart';
 import '../repositories/quiz_repository.dart';
 
 class GameState extends ChangeNotifier {
   static const List<int> hintCosts = [5, 10, 20];
+  static const int letterRevealCost = 30;
+  static const int maxLetterReveals = 3;
 
   final QuizRepository _quizRepository;
 
@@ -15,6 +18,7 @@ class GameState extends ChangeNotifier {
   int _totalCoins = 0;
   final Map<int, List<bool>> _levelProgress = {};
   final Map<int, List<int>> _hintsProgress = {};
+  final Map<int, List<int>> _lettersProgress = {};
   List<Level> _levels = [];
   bool _isLoading = false;
   String? _error;
@@ -41,6 +45,9 @@ class GameState extends ChangeNotifier {
     }
     if (!_hintsProgress.containsKey(levelId)) {
       _hintsProgress[levelId] = List.filled(animalCount, 0);
+    }
+    if (!_lettersProgress.containsKey(levelId)) {
+      _lettersProgress[levelId] = List.filled(animalCount, 0);
     }
   }
 
@@ -69,6 +76,8 @@ class GameState extends ChangeNotifier {
       _levelProgress.addAll(progress);
       final hints = await _quizRepository.getHintsProgress();
       _hintsProgress.addAll(hints);
+      final letters = await _quizRepository.getLettersProgress();
+      _lettersProgress.addAll(letters);
       _totalCoins = await _quizRepository.getUserCoins();
       notifyListeners();
     } catch (e) {
@@ -123,6 +132,70 @@ class GameState extends ChangeNotifier {
     } catch (e) {
       return null;
     }
+  }
+
+  Future<RevealLetterResult?> buyLetterReveal(int levelId, int animalIndex) async {
+    final currentLetters = getLettersRevealed(levelId, animalIndex);
+    if (currentLetters >= maxLetterReveals) return null;
+    if (_totalCoins < letterRevealCost) return null;
+
+    try {
+      final result = await _quizRepository.revealLetter(
+        levelId: levelId,
+        animalIndex: animalIndex,
+      );
+      _totalCoins = result.totalCoins;
+      _lettersProgress.putIfAbsent(
+        levelId,
+        () => List.filled(
+          levels.firstWhere((l) => l.id == levelId).animals.length,
+          0,
+        ),
+      );
+      _lettersProgress[levelId]![animalIndex] = result.lettersRevealed;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int getLettersRevealed(int levelId, int animalIndex) {
+    return _lettersProgress[levelId]?[animalIndex] ?? 0;
+  }
+
+  /// Returns deterministic letter positions to reveal based on count.
+  /// Positions are evenly distributed: 1st→middle, 2nd→1/3, 3rd→2/3.
+  List<int> getRevealedPositions(int levelId, int animalIndex, String animalName) {
+    final count = getLettersRevealed(levelId, animalIndex);
+    if (count <= 0) return [];
+
+    final letters = animalName.replaceAll(' ', '');
+    final len = letters.length;
+    if (len == 0) return [];
+
+    // Compute positions in letter-only space (excluding spaces)
+    final positions = <int>[];
+    if (count >= 1) positions.add(len ~/ 2);       // middle
+    if (count >= 2) positions.add(len ~/ 3);       // 1/3
+    if (count >= 3) positions.add((len * 2) ~/ 3); // 2/3
+
+    // Convert letter-only indices to full-name indices (accounting for spaces)
+    final result = <int>[];
+    for (final letterIdx in positions) {
+      int letterCount = 0;
+      for (int i = 0; i < animalName.length; i++) {
+        if (animalName[i] != ' ') {
+          if (letterCount == letterIdx) {
+            result.add(i);
+            break;
+          }
+          letterCount++;
+        }
+      }
+    }
+
+    return result;
   }
 
   int getHintsRevealed(int levelId, int animalIndex) {

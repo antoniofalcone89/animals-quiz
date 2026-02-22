@@ -3,12 +3,14 @@ import '../../models/answer_result.dart';
 import '../../models/buy_hint_result.dart';
 import '../../models/game_state.dart';
 import '../../models/level.dart';
+import '../../models/reveal_letter_result.dart';
 import '../../utils/string_similarity.dart';
 import '../quiz_repository.dart';
 
 class MockQuizRepository implements QuizRepository {
   final Map<int, List<bool>> _progress = {};
   final Map<int, List<int>> _hints = {};
+  final Map<int, List<int>> _letters = {};
   int _coins = 0;
 
   @override
@@ -58,6 +60,11 @@ class MockQuizRepository implements QuizRepository {
   }
 
   @override
+  Future<Map<int, List<int>>> getLettersProgress() async {
+    return Map.unmodifiable(_letters);
+  }
+
+  @override
   Future<int> getUserCoins() async {
     return _coins;
   }
@@ -86,6 +93,32 @@ class MockQuizRepository implements QuizRepository {
     return BuyHintResult(
       totalCoins: _coins,
       hintsRevealed: _hints[levelId]![animalIndex],
+    );
+  }
+
+  @override
+  Future<RevealLetterResult> revealLetter({
+    required int levelId,
+    required int animalIndex,
+  }) async {
+    final level = quizLevels.firstWhere((l) => l.id == levelId);
+    _letters.putIfAbsent(levelId, () => List.filled(level.animals.length, 0));
+    final currentLetters = _letters[levelId]![animalIndex];
+
+    if (currentLetters >= GameState.maxLetterReveals) {
+      throw Exception('max_letters_reached');
+    }
+
+    if (_coins < GameState.letterRevealCost) {
+      throw Exception('insufficient_coins');
+    }
+
+    _coins -= GameState.letterRevealCost;
+    _letters[levelId]![animalIndex] = currentLetters + 1;
+
+    return RevealLetterResult(
+      totalCoins: _coins,
+      lettersRevealed: _letters[levelId]![animalIndex],
     );
   }
 }

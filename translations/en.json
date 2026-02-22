@@ -40,5 +40,21 @@
   "hint_cost": "{} coins",
   "not_enough_coins": "Not enough coins!",
   "did_you_know": "Did you know?",
-  "hints_used": "Hint {}/{}"
+  "hints_used": "Hint {}/{}",
+  "guest_account": "Guest Account",
+  "link_account_title": "Link Your Account",
+  "link_account_description": "You're playing as a guest. Link your account with Google or email to save your progress permanently and never lose it!",
+  "link_with_google": "LINK WITH GOOGLE",
+  "link_with_email": "LINK WITH EMAIL",
+  "email": "Email",
+  "password": "Password",
+  "confirm_password": "Confirm Password",
+  "link_account": "LINK ACCOUNT",
+  "cancel": "Cancel",
+  "account_linked": "Account linked successfully!",
+  "account_link_error": "Failed to link account. Please try again.",
+  "email_required": "Email is required",
+  "password_required": "Password is required",
+  "passwords_must_match": "Passwords must match",
+  "password_min_length": "Password must be at least 6 characters"
 }

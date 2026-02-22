@@ -12,7 +12,7 @@ class FirebaseAuthRepository implements AuthRepository {
   final fb.FirebaseAuth _firebaseAuth;
 
   FirebaseAuthRepository(this._client)
-      : _firebaseAuth = fb.FirebaseAuth.instance;
+    : _firebaseAuth = fb.FirebaseAuth.instance;
 
   @override
   Future<bool> signInWithGoogle() async {
@@ -48,9 +48,10 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<User> registerProfile(String username) async {
     try {
       await _firebaseAuth.currentUser?.updateDisplayName(username);
-      final json = await _client.post('/auth/register', body: {
-        'username': username,
-      });
+      final json = await _client.post(
+        '/auth/register',
+        body: {'username': username},
+      );
       return User.fromJson(json);
     } on ApiException catch (e) {
       if (e.code == 'profile_exists') {
@@ -64,9 +65,9 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<User?> getCurrentUser() async {
-    return _client.getOrNull('/auth/me').then(
-      (json) => json != null ? User.fromJson(json) : null,
-    );
+    return _client
+        .getOrNull('/auth/me')
+        .then((json) => json != null ? User.fromJson(json) : null);
   }
 
   @override
@@ -79,4 +80,33 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   String? get displayName => _firebaseAuth.currentUser?.displayName;
+
+  @override
+  bool get isAnonymous => _firebaseAuth.currentUser?.isAnonymous ?? false;
+
+  @override
+  Future<bool> linkWithGoogle() async {
+    try {
+      if (kIsWeb) {
+        final provider = fb.GoogleAuthProvider();
+        await _firebaseAuth.currentUser?.linkWithPopup(provider);
+      } else {
+        final credential = await getNativeGoogleCredential();
+        if (credential == null) return false; // user cancelled
+        await _firebaseAuth.currentUser?.linkWithCredential(credential);
+      }
+      return true;
+    } on fb.FirebaseAuthException {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> linkWithEmailPassword(String email, String password) async {
+    final credential = fb.EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await _firebaseAuth.currentUser?.linkWithCredential(credential);
+  }
 }
