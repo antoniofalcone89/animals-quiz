@@ -7,50 +7,41 @@ import 'coin_badge.dart';
 class HomeHeader extends StatelessWidget {
   final String username;
   final int totalCoins;
+  final int totalPoints;
 
   const HomeHeader({
     super.key,
     required this.username,
     required this.totalCoins,
+    required this.totalPoints,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'hello_user'.tr(args: [username.split(' ').first]),
+            style: GoogleFonts.nunito(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: AppColors.deepPurple,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 10),
+          Row(
             children: [
-              Expanded(
-                child: Text(
-                  'hello_user'.tr(args: [username.split(' ').first]),
-                  style: GoogleFonts.nunito(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.deepPurple,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
               CoinBadge(coins: totalCoins),
+              const SizedBox(width: 8),
+              PointsBadge(points: totalPoints),
             ],
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-          child: Text(
-            'play_today'.tr(),
-            style: GoogleFonts.nunito(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

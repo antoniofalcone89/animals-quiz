@@ -12,6 +12,7 @@ abstract class QuizRepository {
     required int levelId,
     required int animalIndex,
     required String answer,
+    bool adRevealed = false,
   });
 
   Future<Map<int, List<bool>>> getUserProgress();

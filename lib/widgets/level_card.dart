@@ -92,7 +92,10 @@ class _LevelCardState extends State<LevelCard> {
                               ),
                             ),
                             Text(
-                              'questions_count'.tr(args: [widget.level.questionCount.toString()]),
+                              'questions_progress'.tr(args: [
+                                (widget.progress * widget.level.questionCount).round().toString(),
+                                widget.level.questionCount.toString(),
+                              ]),
                               style: GoogleFonts.nunito(
                                 fontSize: 12,
                                 color: Colors.grey[600],

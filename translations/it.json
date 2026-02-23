@@ -23,6 +23,8 @@
   "coins_earned": "+{} Monete Guadagnate",
   "back_to_level": "TORNA AL LIVELLO",
   "questions_count": "{} Domande",
+  "questions_progress": "{}/{}",
+  "hints": "Suggerimenti",
   "complete_80": "Completa l'80% di",
   "language": "Lingua",
   "english": "Inglese",
@@ -56,5 +58,10 @@
   "email_required": "L'email è richiesta",
   "password_required": "La password è richiesta",
   "passwords_must_match": "Le password devono corrispondere",
-  "password_min_length": "La password deve essere di almeno 6 caratteri"
+  "password_min_length": "La password deve essere di almeno 6 caratteri",
+  "reveal_animal_title": "Rivela l'Animale",
+  "reveal_animal_description": "Guarda un breve video pubblicitario per rivelare il nome di questo animale e guadagnare le monete!",
+  "watch_ad": "Guarda Video",
+  "total_points": "Punti Totali",
+  "points_abbr": "pt"
 }

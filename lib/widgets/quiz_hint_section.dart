@@ -194,6 +194,55 @@ class LetterRevealButton extends StatelessWidget {
   }
 }
 
+class RevealAnimalButton extends StatelessWidget {
+  final VoidCallback onReveal;
+  final bool enabled;
+
+  const RevealAnimalButton({
+    super.key,
+    required this.onReveal,
+    required this.enabled,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onReveal : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: enabled
+              ? AppColors.correctGreen.withValues(alpha: 0.1)
+              : Colors.grey.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: enabled
+                ? AppColors.correctGreen.withValues(alpha: 0.3)
+                : Colors.grey.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.help_outline_rounded,
+              size: 18,
+              color: enabled ? AppColors.correctGreen : Colors.grey,
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.play_circle_outline_rounded,
+              size: 16,
+              color: enabled ? AppColors.correctGreen : Colors.grey,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class RevealedHints extends StatelessWidget {
   final List<String> hints;
   final int hintsRevealed;

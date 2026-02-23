@@ -152,14 +152,23 @@ class _LeaderboardTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('\u{1FA99}', style: TextStyle(fontSize: 16)),
+            const Icon(Icons.stars_rounded, size: 18, color: AppColors.deepPurple),
             const SizedBox(width: 4),
             Text(
-              '${entry.totalCoins}',
+              '${entry.totalPoints}',
               style: GoogleFonts.nunito(
                 fontWeight: FontWeight.w800,
                 fontSize: 16,
-                color: AppColors.gold,
+                color: AppColors.deepPurple,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Text(
+              'points_abbr'.tr(),
+              style: GoogleFonts.nunito(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.deepPurple,
               ),
             ),
           ],

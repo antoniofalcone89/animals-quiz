@@ -40,7 +40,8 @@ class _QuizInputSectionState extends State<QuizInputSection>
     with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
 
-  int get _letterCount => widget.animalName.replaceAll(' ', '').length;
+  int get _letterCount =>
+      widget.animalName.replaceAll(' ', '').length - widget.revealedPositions.length;
 
   @override
   void initState() {
@@ -99,12 +100,11 @@ class _QuizInputSectionState extends State<QuizInputSection>
         final isRevealed = widget.revealedPositions.contains(nameIdx);
 
         if (isRevealed) {
-          // Show the actual letter in gold
+          // Show the actual letter in gold — don't consume a typed char
           spans.add(TextSpan(
             text: name[nameIdx],
             style: const TextStyle(color: AppColors.gold),
           ));
-          typedIdx++;
         } else {
           final hasChar = typedIdx < typed.length;
           final char = hasChar ? typed[typedIdx] : '_';

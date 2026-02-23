@@ -28,11 +28,13 @@ class ApiQuizRepository implements QuizRepository {
     required int levelId,
     required int animalIndex,
     required String answer,
+    bool adRevealed = false,
   }) async {
     final json = await _client.post('/quiz/answer', body: {
       'levelId': levelId,
       'animalIndex': animalIndex,
       'answer': answer,
+      if (adRevealed) 'adRevealed': true,
     });
     return AnswerResult.fromJson(json);
   }

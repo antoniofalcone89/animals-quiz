@@ -28,23 +28,33 @@ class MockQuizRepository implements QuizRepository {
     required int levelId,
     required int animalIndex,
     required String answer,
+    bool adRevealed = false,
   }) async {
     final level = quizLevels.firstWhere((l) => l.id == levelId);
     final animal = level.animals[animalIndex];
     final correct = isFuzzyMatch(answer, animal.name);
 
     int coinsAwarded = 0;
+    int pointsAwarded = 0;
     if (correct) {
       coinsAwarded = 10;
       _coins += coinsAwarded;
       _progress.putIfAbsent(levelId, () => List.filled(level.animals.length, false));
       _progress[levelId]![animalIndex] = true;
+      final hints = _hints[levelId]?[animalIndex] ?? 0;
+      final letters = _letters[levelId]?[animalIndex] ?? 0;
+      pointsAwarded = GameState.scoring.compute(
+        hintsUsed: hints,
+        lettersUsed: letters,
+        adRevealed: adRevealed,
+      );
     }
 
     return AnswerResult(
       correct: correct,
       coinsAwarded: coinsAwarded,
       totalCoins: _coins,
+      pointsAwarded: pointsAwarded,
       correctAnswer: animal.name,
     );
   }

@@ -180,6 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
         HomeHeader(
           username: widget.gameState.username,
           totalCoins: widget.gameState.totalCoins,
+          totalPoints: widget.gameState.totalPoints,
         ),
         Expanded(
           child: LevelGrid(

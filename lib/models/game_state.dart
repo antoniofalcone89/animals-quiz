@@ -7,15 +7,55 @@ import 'reveal_letter_result.dart';
 import '../config/env.dart';
 import '../repositories/quiz_repository.dart';
 
+class ScoringConfig {
+  /// Points awarded when the answer is correct with no hints or letter reveals.
+  final int pointsNoHints;
+
+  /// Points for 1 hint or 1 letter revealed.
+  final int pointsOneAssist;
+
+  /// Points for 2 assists (hints + letters combined).
+  final int pointsTwoAssists;
+
+  /// Points for 3+ assists.
+  final int pointsManyAssists;
+
+  /// Points when the answer was revealed via ad.
+  final int pointsAdRevealed;
+
+  const ScoringConfig({
+    this.pointsNoHints = 20,
+    this.pointsOneAssist = 15,
+    this.pointsTwoAssists = 10,
+    this.pointsManyAssists = 5,
+    this.pointsAdRevealed = 3,
+  });
+
+  int compute({
+    required int hintsUsed,
+    required int lettersUsed,
+    required bool adRevealed,
+  }) {
+    if (adRevealed) return pointsAdRevealed;
+    final total = hintsUsed + lettersUsed;
+    if (total == 0) return pointsNoHints;
+    if (total == 1) return pointsOneAssist;
+    if (total == 2) return pointsTwoAssists;
+    return pointsManyAssists;
+  }
+}
+
 class GameState extends ChangeNotifier {
   static const List<int> hintCosts = [5, 10, 20];
   static const int letterRevealCost = 30;
   static const int maxLetterReveals = 3;
+  static const ScoringConfig scoring = ScoringConfig();
 
   final QuizRepository _quizRepository;
 
   String _username = 'Guest';
   int _totalCoins = 0;
+  int _totalPoints = 0;
   final Map<int, List<bool>> _levelProgress = {};
   final Map<int, List<int>> _hintsProgress = {};
   final Map<int, List<int>> _lettersProgress = {};
@@ -28,6 +68,7 @@ class GameState extends ChangeNotifier {
 
   String get username => _username;
   int get totalCoins => _totalCoins;
+  int get totalPoints => _totalPoints;
   Map<int, List<bool>> get levelProgress => _levelProgress;
   Map<int, List<int>> get hintsProgress => _hintsProgress;
   List<Level> get levels => _levels;
@@ -89,16 +130,19 @@ class GameState extends ChangeNotifier {
   Future<AnswerResult> submitAnswer(
     int levelId,
     int animalIndex,
-    String answer,
-  ) async {
+    String answer, {
+    bool adRevealed = false,
+  }) async {
     final result = await _quizRepository.submitAnswer(
       levelId: levelId,
       animalIndex: animalIndex,
       answer: answer,
+      adRevealed: adRevealed,
     );
 
     if (result.correct) {
       _totalCoins = result.totalCoins;
+      _totalPoints += result.pointsAwarded;
       if (_levelProgress.containsKey(levelId)) {
         _levelProgress[levelId]![animalIndex] = true;
       }
@@ -134,7 +178,10 @@ class GameState extends ChangeNotifier {
     }
   }
 
-  Future<RevealLetterResult?> buyLetterReveal(int levelId, int animalIndex) async {
+  Future<RevealLetterResult?> buyLetterReveal(
+    int levelId,
+    int animalIndex,
+  ) async {
     final currentLetters = getLettersRevealed(levelId, animalIndex);
     if (currentLetters >= maxLetterReveals) return null;
     if (_totalCoins < letterRevealCost) return null;
@@ -166,7 +213,11 @@ class GameState extends ChangeNotifier {
 
   /// Returns deterministic letter positions to reveal based on count.
   /// Positions are evenly distributed: 1st→middle, 2nd→1/3, 3rd→2/3.
-  List<int> getRevealedPositions(int levelId, int animalIndex, String animalName) {
+  List<int> getRevealedPositions(
+    int levelId,
+    int animalIndex,
+    String animalName,
+  ) {
     final count = getLettersRevealed(levelId, animalIndex);
     if (count <= 0) return [];
 
@@ -176,8 +227,8 @@ class GameState extends ChangeNotifier {
 
     // Compute positions in letter-only space (excluding spaces)
     final positions = <int>[];
-    if (count >= 1) positions.add(len ~/ 2);       // middle
-    if (count >= 2) positions.add(len ~/ 3);       // 1/3
+    if (count >= 1) positions.add(len ~/ 2); // middle
+    if (count >= 2) positions.add(len ~/ 3); // 1/3
     if (count >= 3) positions.add((len * 2) ~/ 3); // 2/3
 
     // Convert letter-only indices to full-name indices (accounting for spaces)

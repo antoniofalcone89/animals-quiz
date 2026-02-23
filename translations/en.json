@@ -23,6 +23,8 @@
   "coins_earned": "+{} Coins Earned",
   "back_to_level": "BACK TO LEVEL",
   "questions_count": "{} Questions",
+  "questions_progress": "{}/{}",
+  "hints": "Hints",
   "complete_80": "Complete 80% of",
   "language": "Language",
   "english": "English",
@@ -56,5 +58,10 @@
   "email_required": "Email is required",
   "password_required": "Password is required",
   "passwords_must_match": "Passwords must match",
-  "password_min_length": "Password must be at least 6 characters"
+  "password_min_length": "Password must be at least 6 characters",
+  "reveal_animal_title": "Reveal the Animal",
+  "reveal_animal_description": "Watch a short video ad to reveal the name of this animal and earn the coins!",
+  "watch_ad": "Watch Ad",
+  "total_points": "Total Points",
+  "points_abbr": "pts"
 }
