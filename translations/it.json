@@ -62,6 +62,9 @@
   "reveal_animal_title": "Rivela l'Animale",
   "reveal_animal_description": "Guarda un breve video pubblicitario per rivelare il nome di questo animale e guadagnare le monete!",
   "watch_ad": "Guarda Video",
+  "ad_not_ready": "Il video si sta caricando, riprova tra poco.",
+  "ad_not_available": "Video non disponibile al momento.",
+  "ad_reward_not_earned": "Guarda tutto il video per rivelare l'animale.",
   "total_points": "Punti Totali",
   "points_abbr": "pt"
 }
