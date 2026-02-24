@@ -5,6 +5,8 @@ import '../theme/app_theme.dart';
 import 'coin_badge.dart';
 
 class HomeHeader extends StatelessWidget {
+  static const double height = 118;
+
   final String username;
   final int totalCoins;
   final int totalPoints;
@@ -18,29 +20,32 @@ class HomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'hello_user'.tr(args: [username.split(' ').first]),
-            style: GoogleFonts.nunito(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppColors.deepPurple,
+    return SizedBox(
+      height: height,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'hello_user'.tr(args: [username.split(' ').first]),
+              style: GoogleFonts.nunito(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: AppColors.deepPurple,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              CoinBadge(coins: totalCoins),
-              const SizedBox(width: 8),
-              PointsBadge(points: totalPoints),
-            ],
-          ),
-        ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                CoinBadge(coins: totalCoins),
+                const SizedBox(width: 8),
+                PointsBadge(points: totalPoints),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

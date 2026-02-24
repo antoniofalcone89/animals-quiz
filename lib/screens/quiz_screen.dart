@@ -65,22 +65,6 @@ class _QuizScreenState extends State<QuizScreen> {
     if (hasText != _hasText) {
       setState(() => _hasText = hasText);
     }
-    // Auto-submit when typed letter count matches the remaining (non-revealed) letter count
-    final animal = widget.level.animals[_currentAnimalIndex];
-    final totalLetters = animal.name.replaceAll(' ', '').length;
-    final revealed = widget.gameState.getRevealedPositions(
-      widget.level.id,
-      _currentAnimalIndex,
-      animal.name,
-    );
-    final letterCount = totalLetters - revealed.length;
-    if (text.length >= letterCount &&
-        hasText &&
-        !_answered &&
-        !_showWrongMessage &&
-        !_isCurrentAnimalGuessed()) {
-      _onSubmit();
-    }
   }
 
   @override
@@ -229,7 +213,10 @@ class _QuizScreenState extends State<QuizScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.help_outline_rounded, color: AppColors.correctGreen),
+            const Icon(
+              Icons.help_outline_rounded,
+              color: AppColors.correctGreen,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -268,7 +255,9 @@ class _QuizScreenState extends State<QuizScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.correctGreen,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -284,27 +273,29 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _revealAnimal(String animalName) {
-    widget.gameState.submitAnswer(
-      widget.level.id,
-      _currentAnimalIndex,
-      animalName,
-      adRevealed: true,
-    ).then((result) {
-      if (!mounted) return;
-      String? funFact;
-      final animal = widget.level.animals[_currentAnimalIndex];
-      if (animal.funFacts.isNotEmpty) {
-        funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
-      }
-      _focusNode.unfocus();
-      setState(() {
-        _answered = true;
-        _revealedName = result.correctAnswer ?? animalName;
-        _sessionCoins += result.coinsAwarded;
-        _sessionCorrect++;
-        _currentFunFact = funFact;
-      });
-    });
+    widget.gameState
+        .submitAnswer(
+          widget.level.id,
+          _currentAnimalIndex,
+          animalName,
+          adRevealed: true,
+        )
+        .then((result) {
+          if (!mounted) return;
+          String? funFact;
+          final animal = widget.level.animals[_currentAnimalIndex];
+          if (animal.funFacts.isNotEmpty) {
+            funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
+          }
+          _focusNode.unfocus();
+          setState(() {
+            _answered = true;
+            _revealedName = result.correctAnswer ?? animalName;
+            _sessionCoins += result.coinsAwarded;
+            _sessionCorrect++;
+            _currentFunFact = funFact;
+          });
+        });
   }
 
   String _insertSpaces(String typed, String name, List<int> revealedPositions) {
@@ -394,7 +385,9 @@ class _QuizScreenState extends State<QuizScreen> {
 
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final safeBottom = MediaQuery.paddingOf(context).bottom;
-    final keyboardVisible = bottomInset > 100;
+    // Once answered, ignore keyboard inset so the panel doesn't resize as the keyboard animates away
+    final effectiveBottomInset = _answered ? 0.0 : bottomInset;
+    final keyboardVisible = effectiveBottomInset > 100;
 
     final animal = widget.level.animals[_currentAnimalIndex];
     final alreadyGuessed = _isCurrentAnimalGuessed() && !_answered;
@@ -451,17 +444,28 @@ class _QuizScreenState extends State<QuizScreen> {
 
           // Image zone — fills purple background
           Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: AnimalEmojiCard(
-                    key: ValueKey(_currentIndex),
-                    emoji: animal.emoji ?? '\u{2753}',
-                    imageUrl: animal.imageUrl,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_focusNode.hasFocus) {
+                  _focusNode.unfocus();
+                }
+              },
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 350),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    child: AnimalEmojiCard(
+                      key: ValueKey(_currentIndex),
+                      emoji: animal.emoji ?? '\u{2753}',
+                      imageUrl: animal.imageUrl,
+                    ),
                   ),
                 ),
               ),
@@ -495,21 +499,29 @@ class _QuizScreenState extends State<QuizScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // "View hints" chip when keyboard is visible and hints are bought
-                      if (hintsRevealed > 0 && !_answered && !alreadyGuessed && keyboardVisible)
+                      if (hintsRevealed > 0 &&
+                          !_answered &&
+                          !alreadyGuessed &&
+                          keyboardVisible)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: GestureDetector(
-                            onTap: () => _showHintsSheet(animal.hints, hintsRevealed),
+                            onTap: () =>
+                                _showHintsSheet(animal.hints, hintsRevealed),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 7,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.deepPurple.withValues(alpha: 0.07),
+                                color: AppColors.deepPurple.withValues(
+                                  alpha: 0.07,
+                                ),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: AppColors.deepPurple.withValues(alpha: 0.2),
+                                  color: AppColors.deepPurple.withValues(
+                                    alpha: 0.2,
+                                  ),
                                 ),
                               ),
                               child: Row(
@@ -561,7 +573,11 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
 
                       // Inline revealed hints — only when keyboard is hidden and sheet is not open
-                      if (hintsRevealed > 0 && !_answered && !alreadyGuessed && !keyboardVisible && !_hintsSheetOpen)
+                      if (hintsRevealed > 0 &&
+                          !_answered &&
+                          !alreadyGuessed &&
+                          !keyboardVisible &&
+                          !_hintsSheetOpen)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: RevealedHints(
@@ -573,11 +589,14 @@ class _QuizScreenState extends State<QuizScreen> {
                       // Input
                       QuizInputSection(
                         animalName: animal.name,
-                        revealedName: alreadyGuessed ? animal.name : _revealedName,
+                        revealedName: alreadyGuessed
+                            ? animal.name
+                            : _revealedName,
                         alreadyGuessed: alreadyGuessed,
                         controller: _controller,
                         focusNode: _focusNode,
-                        enabled: !_answered && !alreadyGuessed && !_showWrongMessage,
+                        enabled:
+                            !_answered && !alreadyGuessed && !_showWrongMessage,
                         questionIndex: _currentIndex,
                         showError: _showWrongMessage,
                         onSubmit: _onSubmit,
@@ -600,8 +619,10 @@ class _QuizScreenState extends State<QuizScreen> {
                                   hintsRevealed: hintsRevealed,
                                   totalHints: animal.hints.length,
                                   nextHintCost: nextHintCost,
-                                  canAfford: nextHintCost != null &&
-                                      widget.gameState.totalCoins >= nextHintCost,
+                                  canAfford:
+                                      nextHintCost != null &&
+                                      widget.gameState.totalCoins >=
+                                          nextHintCost,
                                   onRequestHint: _useHint,
                                   enabled: !_answered && !alreadyGuessed,
                                 ),
@@ -609,7 +630,8 @@ class _QuizScreenState extends State<QuizScreen> {
                                 lettersRevealed: lettersRevealed,
                                 maxReveals: GameState.maxLetterReveals,
                                 cost: GameState.letterRevealCost,
-                                canAfford: widget.gameState.totalCoins >=
+                                canAfford:
+                                    widget.gameState.totalCoins >=
                                     GameState.letterRevealCost,
                                 onReveal: _useLetterReveal,
                                 enabled: !_answered && !alreadyGuessed,
@@ -657,7 +679,11 @@ class _QuizScreenState extends State<QuizScreen> {
                         ),
                       ],
 
-                      SizedBox(height: max(bottomInset, safeBottom) + 12),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        height: max(effectiveBottomInset, safeBottom) + 12,
+                      ),
                     ],
                   ),
                 ),

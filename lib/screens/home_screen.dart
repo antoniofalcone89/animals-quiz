@@ -113,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
             : ProfileView(
                 username: widget.gameState.username,
                 totalCoins: widget.gameState.totalCoins,
+                totalPoints: widget.gameState.totalPoints,
                 isGuest: ServiceLocator.instance.authRepository.isAnonymous,
                 onLogout: _handleLogout,
                 onLocaleChanged: _handleLocaleChanged,
@@ -174,28 +175,40 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    const headerHeight = HomeHeader.height;
+
+    return Stack(
       children: [
-        HomeHeader(
-          username: widget.gameState.username,
-          totalCoins: widget.gameState.totalCoins,
-          totalPoints: widget.gameState.totalPoints,
-        ),
-        Expanded(
-          child: LevelGrid(
-            gameState: widget.gameState,
-            onLevelTap: (level) async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LevelDetailScreen(
-                    level: level,
-                    gameState: widget.gameState,
+        Positioned.fill(
+          top: headerHeight,
+          child: ClipRect(
+            child: LevelGrid(
+              gameState: widget.gameState,
+              onLevelTap: (level) async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => LevelDetailScreen(
+                      level: level,
+                      gameState: widget.gameState,
+                    ),
                   ),
-                ),
-              );
-              setState(() {});
-            },
+                );
+                setState(() {});
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          child: ColoredBox(
+            color: AppColors.lightGrey,
+            child: HomeHeader(
+              username: widget.gameState.username,
+              totalCoins: widget.gameState.totalCoins,
+              totalPoints: widget.gameState.totalPoints,
+            ),
           ),
         ),
       ],

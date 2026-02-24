@@ -2,10 +2,12 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import 'coin_badge.dart';
 
 class ProfileView extends StatelessWidget {
   final String username;
   final int totalCoins;
+  final int totalPoints;
   final bool isGuest;
   final VoidCallback? onLogout;
   final ValueChanged<String>? onLocaleChanged;
@@ -16,6 +18,7 @@ class ProfileView extends StatelessWidget {
     super.key,
     required this.username,
     required this.totalCoins,
+    required this.totalPoints,
     this.isGuest = false,
     this.onLogout,
     this.onLocaleChanged,
@@ -196,16 +199,9 @@ class ProfileView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('\u{1FA99}', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: 6),
-              Text(
-                '$totalCoins ${'total_coins'.tr()}',
-                style: GoogleFonts.nunito(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.gold,
-                ),
-              ),
+              CoinBadge(coins: totalCoins),
+              const SizedBox(width: 10),
+              PointsBadge(points: totalPoints),
             ],
           ),
           const SizedBox(height: 32),
