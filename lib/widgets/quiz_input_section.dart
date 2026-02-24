@@ -6,6 +6,21 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final upperText = newValue.text.toUpperCase();
+    return newValue.copyWith(
+      text: upperText,
+      selection: TextSelection.collapsed(offset: upperText.length),
+      composing: TextRange.empty,
+    );
+  }
+}
+
 class QuizInputSection extends StatefulWidget {
   final String animalName;
   final String? revealedName;
@@ -78,8 +93,8 @@ class _QuizInputSectionState extends State<QuizInputSection>
   }
 
   Widget _buildCharacterDisplay() {
-    final name = widget.animalName;
-    final typed = widget.controller.text;
+    final name = widget.animalName.toUpperCase();
+    final typed = widget.controller.text.toUpperCase();
     int typedIdx = 0;
     int nameIdx = 0;
 
@@ -163,8 +178,8 @@ class _QuizInputSectionState extends State<QuizInputSection>
           child: showName
               ? Text(
                   widget.alreadyGuessed
-                      ? (widget.revealedName ?? '')
-                      : widget.revealedName!,
+                      ? (widget.revealedName ?? '').toUpperCase()
+                      : widget.revealedName!.toUpperCase(),
                   key: const ValueKey('revealed'),
                   style: GoogleFonts.nunito(
                     fontSize: 28,
@@ -213,6 +228,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
                             maxLength: _letterCount,
                             textCapitalization: TextCapitalization.words,
                             inputFormatters: [
+                              _UpperCaseTextFormatter(),
                               FilteringTextInputFormatter.deny(RegExp(r'\s')),
                               LengthLimitingTextInputFormatter(_letterCount),
                             ],

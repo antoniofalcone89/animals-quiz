@@ -114,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 username: widget.gameState.username,
                 totalCoins: widget.gameState.totalCoins,
                 totalPoints: widget.gameState.totalPoints,
+                isStatsLoading: widget.gameState.isStatsLoading,
                 isGuest: ServiceLocator.instance.authRepository.isAnonymous,
                 onLogout: _handleLogout,
                 onLocaleChanged: _handleLocaleChanged,
@@ -146,8 +147,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHome() {
+    const headerHeight = HomeHeader.height;
+
     if (widget.gameState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Stack(
+        children: [
+          const Positioned.fill(
+            top: headerHeight,
+            child: ClipRect(child: LevelGridSkeleton()),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: ColoredBox(
+              color: AppColors.lightGrey,
+              child: HomeHeader(
+                username: widget.gameState.username,
+                totalCoins: widget.gameState.totalCoins,
+                totalPoints: widget.gameState.totalPoints,
+                isStatsLoading: true,
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     if (widget.gameState.error != null) {
@@ -174,8 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
-
-    const headerHeight = HomeHeader.height;
 
     return Stack(
       children: [
@@ -208,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
               username: widget.gameState.username,
               totalCoins: widget.gameState.totalCoins,
               totalPoints: widget.gameState.totalPoints,
+              isStatsLoading: widget.gameState.isStatsLoading,
             ),
           ),
         ),

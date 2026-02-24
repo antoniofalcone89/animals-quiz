@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'coin_badge.dart';
+import 'shimmer_loading.dart';
 
 class ProfileView extends StatelessWidget {
   final String username;
   final int totalCoins;
   final int totalPoints;
+  final bool isStatsLoading;
   final bool isGuest;
   final VoidCallback? onLogout;
   final ValueChanged<String>? onLocaleChanged;
@@ -19,6 +21,7 @@ class ProfileView extends StatelessWidget {
     required this.username,
     required this.totalCoins,
     required this.totalPoints,
+    this.isStatsLoading = false,
     this.isGuest = false,
     this.onLogout,
     this.onLocaleChanged,
@@ -199,9 +202,13 @@ class ProfileView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CoinBadge(coins: totalCoins),
+              isStatsLoading
+                  ? _statsBadgeShimmer()
+                  : CoinBadge(coins: totalCoins),
               const SizedBox(width: 10),
-              PointsBadge(points: totalPoints),
+              isStatsLoading
+                  ? _statsBadgeShimmer()
+                  : PointsBadge(points: totalPoints),
             ],
           ),
           const SizedBox(height: 32),
@@ -414,6 +421,20 @@ class ProfileView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _statsBadgeShimmer() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        width: 86,
+        height: 34,
+        child: ShimmerLoading(
+          baseColor: const Color(0xFFE5E5E5),
+          highlightColor: const Color(0xFFF2F2F2),
+        ),
       ),
     );
   }

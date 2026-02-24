@@ -30,12 +30,15 @@ class ApiQuizRepository implements QuizRepository {
     required String answer,
     bool adRevealed = false,
   }) async {
-    final json = await _client.post('/quiz/answer', body: {
-      'levelId': levelId,
-      'animalIndex': animalIndex,
-      'answer': answer,
-      if (adRevealed) 'adRevealed': true,
-    });
+    final json = await _client.post(
+      '/quiz/answer',
+      body: {
+        'levelId': levelId,
+        'animalIndex': animalIndex,
+        'answer': answer,
+        if (adRevealed) 'adRevealed': true,
+      },
+    );
     return AnswerResult.fromJson(json);
   }
 
@@ -75,8 +78,8 @@ class ApiQuizRepository implements QuizRepository {
 
   @override
   Future<int> getUserPoints() async {
-    final json = await _client.get('/users/me/points');
-    return json['totalPoints'] as int;
+    final json = await _client.get('/auth/me');
+    return json['totalPoints'] as int? ?? json['score'] as int? ?? 0;
   }
 
   @override
@@ -84,10 +87,10 @@ class ApiQuizRepository implements QuizRepository {
     required int levelId,
     required int animalIndex,
   }) async {
-    final json = await _client.post('/quiz/buy-hint', body: {
-      'levelId': levelId,
-      'animalIndex': animalIndex,
-    });
+    final json = await _client.post(
+      '/quiz/buy-hint',
+      body: {'levelId': levelId, 'animalIndex': animalIndex},
+    );
     return BuyHintResult.fromJson(json);
   }
 
@@ -110,10 +113,10 @@ class ApiQuizRepository implements QuizRepository {
     required int levelId,
     required int animalIndex,
   }) async {
-    final json = await _client.post('/quiz/reveal-letter', body: {
-      'levelId': levelId,
-      'animalIndex': animalIndex,
-    });
+    final json = await _client.post(
+      '/quiz/reveal-letter',
+      body: {'levelId': levelId, 'animalIndex': animalIndex},
+    );
     return RevealLetterResult.fromJson(json);
   }
 }

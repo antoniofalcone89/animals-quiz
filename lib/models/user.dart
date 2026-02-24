@@ -21,7 +21,7 @@ class User {
       username: json['username'] as String,
       email: json['email'] as String,
       totalCoins: json['totalCoins'] as int,
-      totalPoints: json['totalPoints'] as int? ?? 0,
+      totalPoints: json['totalPoints'] as int? ?? json['score'] as int? ?? 0,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }

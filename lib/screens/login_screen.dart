@@ -54,7 +54,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleGoogleSignIn() async {
     if (_isLoading) return;
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
       final sl = ServiceLocator.instance;
@@ -75,6 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final username = authRepo.displayName ?? user.username;
       final gameState = await _createGameState(username);
+      gameState.setInitialStats(
+        coins: user.totalCoins,
+        points: user.totalPoints,
+      );
       if (mounted) _navigateToHome(gameState);
     } catch (e) {
       if (mounted) {
@@ -95,7 +102,11 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() { _isLoading = true; _errorMessage = null; _guestNameError = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _guestNameError = null;
+    });
 
     try {
       final sl = ServiceLocator.instance;
@@ -106,6 +117,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await authRepo.registerProfile(username);
 
       final gameState = await _createGameState(user.username);
+      gameState.setInitialStats(
+        coins: user.totalCoins,
+        points: user.totalPoints,
+      );
       if (mounted) _navigateToHome(gameState);
     } catch (e) {
       if (mounted) {
@@ -200,11 +215,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             'https://placehold.co/24x24/white/333?text=G',
                             width: 24,
                             height: 24,
-                            errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.g_mobiledata,
-                              size: 28,
-                              color: AppColors.deepPurple,
-                            ),
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.g_mobiledata,
+                                  size: 28,
+                                  color: AppColors.deepPurple,
+                                ),
                           ),
                     label: Text(
                       _isLoading ? 'signing_in'.tr() : 'login_google'.tr(),
@@ -253,7 +269,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: _usernameController,
                   enabled: !_isLoading,
-                  style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'enter_name'.tr(),
                     hintStyle: GoogleFonts.nunito(color: Colors.grey[400]),
@@ -269,8 +288,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? BorderSide(color: Colors.red[300]!, width: 2)
                           : BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    prefixIcon: const Icon(Icons.person_outline, color: AppColors.deepPurple),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.person_outline,
+                      color: AppColors.deepPurple,
+                    ),
                   ),
                 ),
                 if (_guestNameError != null)
@@ -294,7 +319,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       side: BorderSide(
-                        color: Colors.white.withValues(alpha: _isLoading ? 0.3 : 0.8),
+                        color: Colors.white.withValues(
+                          alpha: _isLoading ? 0.3 : 0.8,
+                        ),
                         width: 2,
                       ),
                       shape: RoundedRectangleBorder(
@@ -306,7 +333,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: GoogleFonts.nunito(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white.withValues(alpha: _isLoading ? 0.4 : 1.0),
+                        color: Colors.white.withValues(
+                          alpha: _isLoading ? 0.4 : 1.0,
+                        ),
                       ),
                     ),
                   ),

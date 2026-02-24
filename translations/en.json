@@ -11,7 +11,7 @@
   "coming_soon": "Coming Soon!",
   "hello_user": "Hello, {}!",
   "play_today": "What would you like to play today?",
-  "question_of": "Question {} of {}",
+  "question_of": "{} of {}",
   "what_animal": "What is the name of this animal?",
   "type_answer": "Type your answer...",
   "submit": "SUBMIT",

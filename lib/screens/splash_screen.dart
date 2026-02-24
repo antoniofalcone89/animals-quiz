@@ -40,21 +40,26 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // User has a Firebase session — try to restore their profile
     try {
-      final user = await authRepo.getCurrentUser()
-          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      final user = await authRepo.getCurrentUser().timeout(
+        const Duration(seconds: 8),
+        onTimeout: () => null,
+      );
       if (user != null && mounted) {
         final gameState = GameState(quizRepository: sl.quizRepository);
         final username = authRepo.displayName ?? user.username;
         gameState.setUsername(username);
-        gameState.setTotalCoins(user.totalCoins);
-        gameState.setTotalPoints(user.totalPoints);
+        gameState.setInitialStats(
+          coins: user.totalCoins,
+          points: user.totalPoints,
+        );
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 HomeScreen(gameState: gameState),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
             transitionDuration: const Duration(milliseconds: 400),
           ),
           (route) => false,
@@ -132,11 +137,24 @@ class _SplashScreenState extends State<SplashScreen> {
                           onPressed: () {
                             Navigator.of(context).push(
                               PageRouteBuilder(
-                                pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                  return FadeTransition(opacity: animation, child: child);
-                                },
-                                transitionDuration: const Duration(milliseconds: 400),
+                                pageBuilder:
+                                    (context, animation, secondaryAnimation) =>
+                                        const LoginScreen(),
+                                transitionsBuilder:
+                                    (
+                                      context,
+                                      animation,
+                                      secondaryAnimation,
+                                      child,
+                                    ) {
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      );
+                                    },
+                                transitionDuration: const Duration(
+                                  milliseconds: 400,
+                                ),
                               ),
                             );
                           },

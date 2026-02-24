@@ -61,6 +61,7 @@ class GameState extends ChangeNotifier {
   final Map<int, List<int>> _lettersProgress = {};
   List<Level> _levels = [];
   bool _isLoading = false;
+  bool _isStatsLoading = true;
   String? _error;
 
   GameState({required QuizRepository quizRepository})
@@ -73,6 +74,7 @@ class GameState extends ChangeNotifier {
   Map<int, List<int>> get hintsProgress => _hintsProgress;
   List<Level> get levels => _levels;
   bool get isLoading => _isLoading;
+  bool get isStatsLoading => _isStatsLoading;
   String? get error => _error;
 
   void setUsername(String name) {
@@ -87,6 +89,13 @@ class GameState extends ChangeNotifier {
 
   void setTotalPoints(int points) {
     _totalPoints = points;
+    notifyListeners();
+  }
+
+  void setInitialStats({required int coins, required int points}) {
+    _totalCoins = coins;
+    _totalPoints = points;
+    _isStatsLoading = false;
     notifyListeners();
   }
 
@@ -122,6 +131,8 @@ class GameState extends ChangeNotifier {
   }
 
   Future<void> loadProgress() async {
+    _isStatsLoading = true;
+    notifyListeners();
     try {
       final progress = await _quizRepository.getUserProgress();
       _levelProgress.addAll(progress);
@@ -131,8 +142,10 @@ class GameState extends ChangeNotifier {
       _lettersProgress.addAll(letters);
       _totalCoins = await _quizRepository.getUserCoins();
       _totalPoints = await _quizRepository.getUserPoints();
+      _isStatsLoading = false;
       notifyListeners();
     } catch (e) {
+      _isStatsLoading = false;
       _error = e.toString();
       notifyListeners();
     }
