@@ -62,6 +62,9 @@
   "reveal_animal_title": "Reveal the Animal",
   "reveal_animal_description": "Watch a short video ad to reveal the name of this animal and earn the coins!",
   "watch_ad": "Watch Ad",
+  "ad_not_ready": "Ad is loading, please try again in a moment.",
+  "ad_not_available": "Ad is not available right now.",
+  "ad_reward_not_earned": "Watch the full ad to reveal the animal.",
   "total_points": "Total Points",
   "points_abbr": "pts"
 }

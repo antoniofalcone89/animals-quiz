@@ -3,8 +3,10 @@ import 'dart:math';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
+import '../services/admob_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
 import '../widgets/coin_badge.dart';
@@ -42,6 +44,9 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _hintsSheetOpen = false;
   String? _revealedName;
   String? _currentFunFact;
+  RewardedAd? _rewardedAd;
+  bool _isLoadingRewardedAd = false;
+  bool _isShowingRewardedAd = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -57,6 +62,7 @@ class _QuizScreenState extends State<QuizScreen> {
     ];
     _currentIndex = 0;
     _controller.addListener(_onTextChanged);
+    _loadRewardedAd();
   }
 
   void _onTextChanged() {
@@ -69,10 +75,89 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   void dispose() {
+    _rewardedAd?.dispose();
     _controller.removeListener(_onTextChanged);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _loadRewardedAd() {
+    if (!AdMobService.isSupportedPlatform) return;
+    if (_rewardedAd != null || _isLoadingRewardedAd) return;
+
+    _isLoadingRewardedAd = true;
+    RewardedAd.load(
+      adUnitId: AdMobService.rewardedAdUnitId,
+      request: const AdRequest(),
+      rewardedAdLoadCallback: RewardedAdLoadCallback(
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isLoadingRewardedAd = false;
+        },
+        onAdFailedToLoad: (_) {
+          _rewardedAd = null;
+          _isLoadingRewardedAd = false;
+        },
+      ),
+    );
+  }
+
+  Future<void> _showRewardedAd(String animalName) async {
+    if (!AdMobService.isSupportedPlatform) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ad_not_available'.tr())));
+      }
+      return;
+    }
+
+    final ad = _rewardedAd;
+    if (ad == null || _isShowingRewardedAd) {
+      _loadRewardedAd();
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('ad_not_ready'.tr())));
+      }
+      return;
+    }
+
+    _isShowingRewardedAd = true;
+    var rewardEarned = false;
+
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isShowingRewardedAd = false;
+        _loadRewardedAd();
+        if (!rewardEarned && mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('ad_reward_not_earned'.tr())));
+        }
+      },
+      onAdFailedToShowFullScreenContent: (ad, _) {
+        ad.dispose();
+        _rewardedAd = null;
+        _isShowingRewardedAd = false;
+        _loadRewardedAd();
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('ad_not_available'.tr())));
+        }
+      },
+    );
+
+    ad.show(
+      onUserEarnedReward: (_, __) {
+        rewardEarned = true;
+        _revealAnimal(animalName);
+      },
+    );
   }
 
   int get _currentAnimalIndex => _questionOrder[_currentIndex];
@@ -266,10 +351,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    // TODO: Integrate rewarded ad SDK here.
-    // Show the ad, and only call _revealAnimal() in the onAdCompleted callback.
-    // For now, reveal immediately as a placeholder.
-    _revealAnimal(animal.name);
+    await _showRewardedAd(animal.name);
   }
 
   void _revealAnimal(String animalName) {

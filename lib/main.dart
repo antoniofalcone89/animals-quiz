@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'config/env.dart';
 import 'firebase_options.dart';
+import 'services/admob_service.dart';
 import 'screens/splash_screen.dart';
 import 'services/service_locator.dart';
 import 'theme/app_theme.dart';
@@ -31,6 +33,14 @@ void main() async {
         await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
       } catch (e) {
         debugPrint('Firebase persistence error: $e');
+      }
+    }
+
+    if (AdMobService.isSupportedPlatform) {
+      try {
+        await MobileAds.instance.initialize();
+      } catch (e) {
+        debugPrint('AdMob init error: $e');
       }
     }
   }
