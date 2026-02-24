@@ -12,6 +12,7 @@ class MockQuizRepository implements QuizRepository {
   final Map<int, List<int>> _hints = {};
   final Map<int, List<int>> _letters = {};
   int _coins = 0;
+  int _points = 0;
 
   @override
   Future<List<Level>> getLevels() async {
@@ -48,6 +49,7 @@ class MockQuizRepository implements QuizRepository {
         lettersUsed: letters,
         adRevealed: adRevealed,
       );
+      _points += pointsAwarded;
     }
 
     return AnswerResult(
@@ -77,6 +79,11 @@ class MockQuizRepository implements QuizRepository {
   @override
   Future<int> getUserCoins() async {
     return _coins;
+  }
+
+  @override
+  Future<int> getUserPoints() async {
+    return _points;
   }
 
   @override

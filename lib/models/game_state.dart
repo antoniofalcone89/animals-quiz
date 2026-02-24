@@ -80,6 +80,16 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setTotalCoins(int coins) {
+    _totalCoins = coins;
+    notifyListeners();
+  }
+
+  void setTotalPoints(int points) {
+    _totalPoints = points;
+    notifyListeners();
+  }
+
   void initLevel(int levelId, int animalCount) {
     if (!_levelProgress.containsKey(levelId)) {
       _levelProgress[levelId] = List.filled(animalCount, false);
@@ -120,6 +130,7 @@ class GameState extends ChangeNotifier {
       final letters = await _quizRepository.getLettersProgress();
       _lettersProgress.addAll(letters);
       _totalCoins = await _quizRepository.getUserCoins();
+      _totalPoints = await _quizRepository.getUserPoints();
       notifyListeners();
     } catch (e) {
       _error = e.toString();

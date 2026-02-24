@@ -74,6 +74,12 @@ class ApiQuizRepository implements QuizRepository {
   }
 
   @override
+  Future<int> getUserPoints() async {
+    final json = await _client.get('/users/me/points');
+    return json['totalPoints'] as int;
+  }
+
+  @override
   Future<BuyHintResult> buyHint({
     required int levelId,
     required int animalIndex,

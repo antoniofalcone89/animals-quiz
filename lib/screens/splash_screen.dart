@@ -46,6 +46,8 @@ class _SplashScreenState extends State<SplashScreen> {
         final gameState = GameState(quizRepository: sl.quizRepository);
         final username = authRepo.displayName ?? user.username;
         gameState.setUsername(username);
+        gameState.setTotalCoins(user.totalCoins);
+        gameState.setTotalPoints(user.totalPoints);
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>

@@ -23,6 +23,8 @@ abstract class QuizRepository {
 
   Future<int> getUserCoins();
 
+  Future<int> getUserPoints();
+
   Future<BuyHintResult> buyHint({
     required int levelId,
     required int animalIndex,
