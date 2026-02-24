@@ -3,16 +3,16 @@ import '../leaderboard_repository.dart';
 
 class MockLeaderboardRepository implements LeaderboardRepository {
   static const _mockEntries = [
-    LeaderboardEntry(rank: 1, userId: 'u1', username: 'AnimalMaster', totalCoins: 980, levelsCompleted: 6),
-    LeaderboardEntry(rank: 2, userId: 'u2', username: 'WildExplorer', totalCoins: 870, levelsCompleted: 5),
-    LeaderboardEntry(rank: 3, userId: 'u3', username: 'NatureLover', totalCoins: 750, levelsCompleted: 5),
-    LeaderboardEntry(rank: 4, userId: 'u4', username: 'ZooKeeper42', totalCoins: 640, levelsCompleted: 4),
-    LeaderboardEntry(rank: 5, userId: 'u5', username: 'SafariKing', totalCoins: 530, levelsCompleted: 4),
-    LeaderboardEntry(rank: 6, userId: 'u6', username: 'BirdWatcher', totalCoins: 420, levelsCompleted: 3),
-    LeaderboardEntry(rank: 7, userId: 'u7', username: 'OceanFan', totalCoins: 350, levelsCompleted: 3),
-    LeaderboardEntry(rank: 8, userId: 'u8', username: 'BugHunter', totalCoins: 280, levelsCompleted: 2),
-    LeaderboardEntry(rank: 9, userId: 'u9', username: 'ForestRanger', totalCoins: 190, levelsCompleted: 2),
-    LeaderboardEntry(rank: 10, userId: 'u10', username: 'ReefDiver', totalCoins: 100, levelsCompleted: 1),
+    LeaderboardEntry(rank: 1, userId: 'u1', username: 'AnimalMaster', totalPoints: 980, levelsCompleted: 6),
+    LeaderboardEntry(rank: 2, userId: 'u2', username: 'WildExplorer', totalPoints: 870, levelsCompleted: 5),
+    LeaderboardEntry(rank: 3, userId: 'u3', username: 'NatureLover', totalPoints: 750, levelsCompleted: 5),
+    LeaderboardEntry(rank: 4, userId: 'u4', username: 'ZooKeeper42', totalPoints: 640, levelsCompleted: 4),
+    LeaderboardEntry(rank: 5, userId: 'u5', username: 'SafariKing', totalPoints: 530, levelsCompleted: 4),
+    LeaderboardEntry(rank: 6, userId: 'u6', username: 'BirdWatcher', totalPoints: 420, levelsCompleted: 3),
+    LeaderboardEntry(rank: 7, userId: 'u7', username: 'OceanFan', totalPoints: 350, levelsCompleted: 3),
+    LeaderboardEntry(rank: 8, userId: 'u8', username: 'BugHunter', totalPoints: 280, levelsCompleted: 2),
+    LeaderboardEntry(rank: 9, userId: 'u9', username: 'ForestRanger', totalPoints: 190, levelsCompleted: 2),
+    LeaderboardEntry(rank: 10, userId: 'u10', username: 'ReefDiver', totalPoints: 100, levelsCompleted: 1),
   ];
 
   @override

@@ -47,7 +47,14 @@ app.*.map.json
 # Environment
 .env
 .vscode/
+.windsurf/
+.trae/
+.cline/
+.claude/
+.agents/
 
 docs/ios/Runner/GoogleService-Info.plist
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+
+docs/*

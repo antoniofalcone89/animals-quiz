@@ -24,4 +24,13 @@ abstract class AuthRepository {
 
   /// Display name from the auth provider (e.g. Google account name).
   String? get displayName;
+
+  /// Whether the current user is anonymous (guest).
+  bool get isAnonymous;
+
+  /// Link Google account to current anonymous user.
+  Future<bool> linkWithGoogle();
+
+  /// Link email/password to current anonymous user.
+  Future<void> linkWithEmailPassword(String email, String password);
 }

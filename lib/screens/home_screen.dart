@@ -64,6 +64,43 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _handleLinkWithGoogle() async {
+    final authRepo = ServiceLocator.instance.authRepository;
+    try {
+      final success = await authRepo.linkWithGoogle();
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account_linked'.tr()),
+            backgroundColor: AppColors.correctGreen,
+          ),
+        );
+        setState(() {});
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('account_link_error'.tr()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleLinkWithEmail(String email, String password) async {
+    final authRepo = ServiceLocator.instance.authRepository;
+    try {
+      await authRepo.linkWithEmailPassword(email, password);
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,13 +109,18 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _currentIndex == 0
             ? _buildHome()
             : _currentIndex == 1
-                ? const LeaderboardView()
-                : ProfileView(
-                    username: widget.gameState.username,
-                    totalCoins: widget.gameState.totalCoins,
-                    onLogout: _handleLogout,
-                    onLocaleChanged: _handleLocaleChanged,
-                  ),
+            ? const LeaderboardView()
+            : ProfileView(
+                username: widget.gameState.username,
+                totalCoins: widget.gameState.totalCoins,
+                totalPoints: widget.gameState.totalPoints,
+                isStatsLoading: widget.gameState.isStatsLoading,
+                isGuest: ServiceLocator.instance.authRepository.isAnonymous,
+                onLogout: _handleLogout,
+                onLocaleChanged: _handleLocaleChanged,
+                onLinkWithGoogle: _handleLinkWithGoogle,
+                onLinkWithEmail: _handleLinkWithEmail,
+              ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -87,17 +129,49 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
         items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.home_rounded), label: 'home'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.leaderboard_rounded), label: 'leaderboard'.tr()),
-          BottomNavigationBarItem(icon: const Icon(Icons.person_rounded), label: 'profile'.tr()),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home_rounded),
+            label: 'home'.tr(),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.leaderboard_rounded),
+            label: 'leaderboard'.tr(),
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person_rounded),
+            label: 'profile'.tr(),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildHome() {
+    const headerHeight = HomeHeader.height;
+
     if (widget.gameState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Stack(
+        children: [
+          const Positioned.fill(
+            top: headerHeight,
+            child: ClipRect(child: LevelGridSkeleton()),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: ColoredBox(
+              color: AppColors.lightGrey,
+              child: HomeHeader(
+                username: widget.gameState.username,
+                totalCoins: widget.gameState.totalCoins,
+                totalPoints: widget.gameState.totalPoints,
+                isStatsLoading: true,
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     if (widget.gameState.error != null) {
@@ -125,27 +199,39 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
       children: [
-        HomeHeader(
-          username: widget.gameState.username,
-          totalCoins: widget.gameState.totalCoins,
-        ),
-        Expanded(
-          child: LevelGrid(
-            gameState: widget.gameState,
-            onLevelTap: (level) async {
-              await Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LevelDetailScreen(
-                    level: level,
-                    gameState: widget.gameState,
+        Positioned.fill(
+          top: headerHeight,
+          child: ClipRect(
+            child: LevelGrid(
+              gameState: widget.gameState,
+              onLevelTap: (level) async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => LevelDetailScreen(
+                      level: level,
+                      gameState: widget.gameState,
+                    ),
                   ),
-                ),
-              );
-              setState(() {});
-            },
+                );
+                setState(() {});
+              },
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 0,
+          child: ColoredBox(
+            color: AppColors.lightGrey,
+            child: HomeHeader(
+              username: widget.gameState.username,
+              totalCoins: widget.gameState.totalCoins,
+              totalPoints: widget.gameState.totalPoints,
+              isStatsLoading: widget.gameState.isStatsLoading,
+            ),
           ),
         ),
       ],

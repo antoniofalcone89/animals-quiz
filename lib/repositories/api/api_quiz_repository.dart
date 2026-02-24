@@ -1,6 +1,7 @@
 import '../../models/answer_result.dart';
 import '../../models/buy_hint_result.dart';
 import '../../models/level.dart';
+import '../../models/reveal_letter_result.dart';
 import '../../services/api_client.dart';
 import '../quiz_repository.dart';
 
@@ -27,12 +28,17 @@ class ApiQuizRepository implements QuizRepository {
     required int levelId,
     required int animalIndex,
     required String answer,
+    bool adRevealed = false,
   }) async {
-    final json = await _client.post('/quiz/answer', body: {
-      'levelId': levelId,
-      'animalIndex': animalIndex,
-      'answer': answer,
-    });
+    final json = await _client.post(
+      '/quiz/answer',
+      body: {
+        'levelId': levelId,
+        'animalIndex': animalIndex,
+        'answer': answer,
+        if (adRevealed) 'adRevealed': true,
+      },
+    );
     return AnswerResult.fromJson(json);
   }
 
@@ -71,14 +77,46 @@ class ApiQuizRepository implements QuizRepository {
   }
 
   @override
+  Future<int> getUserPoints() async {
+    final json = await _client.get('/auth/me');
+    return json['totalPoints'] as int? ?? json['score'] as int? ?? 0;
+  }
+
+  @override
   Future<BuyHintResult> buyHint({
     required int levelId,
     required int animalIndex,
   }) async {
-    final json = await _client.post('/quiz/buy-hint', body: {
-      'levelId': levelId,
-      'animalIndex': animalIndex,
-    });
+    final json = await _client.post(
+      '/quiz/buy-hint',
+      body: {'levelId': levelId, 'animalIndex': animalIndex},
+    );
     return BuyHintResult.fromJson(json);
+  }
+
+  @override
+  Future<Map<int, List<int>>> getLettersProgress() async {
+    final json = await _client.get('/users/me/progress');
+    final levels = json['levels'] as Map<String, dynamic>;
+    return levels.map((key, value) {
+      final animals = value as List<dynamic>;
+      final lettersList = animals.map((a) {
+        if (a is bool) return 0;
+        return (a as Map<String, dynamic>)['lettersRevealed'] as int? ?? 0;
+      }).toList();
+      return MapEntry(int.parse(key), lettersList);
+    });
+  }
+
+  @override
+  Future<RevealLetterResult> revealLetter({
+    required int levelId,
+    required int animalIndex,
+  }) async {
+    final json = await _client.post(
+      '/quiz/reveal-letter',
+      body: {'levelId': levelId, 'animalIndex': animalIndex},
+    );
+    return RevealLetterResult.fromJson(json);
   }
 }

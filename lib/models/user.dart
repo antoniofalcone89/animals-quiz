@@ -3,6 +3,7 @@ class User {
   final String username;
   final String email;
   final int totalCoins;
+  final int totalPoints;
   final DateTime createdAt;
 
   const User({
@@ -10,6 +11,7 @@ class User {
     required this.username,
     required this.email,
     required this.totalCoins,
+    required this.totalPoints,
     required this.createdAt,
   });
 
@@ -19,6 +21,7 @@ class User {
       username: json['username'] as String,
       email: json['email'] as String,
       totalCoins: json['totalCoins'] as int,
+      totalPoints: json['totalPoints'] as int? ?? json['score'] as int? ?? 0,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
   }
@@ -29,6 +32,7 @@ class User {
       'username': username,
       'email': email,
       'totalCoins': totalCoins,
+      'totalPoints': totalPoints,
       'createdAt': createdAt.toIso8601String(),
     };
   }

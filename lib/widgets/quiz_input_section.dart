@@ -6,6 +6,21 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
+class _UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final upperText = newValue.text.toUpperCase();
+    return newValue.copyWith(
+      text: upperText,
+      selection: TextSelection.collapsed(offset: upperText.length),
+      composing: TextRange.empty,
+    );
+  }
+}
+
 class QuizInputSection extends StatefulWidget {
   final String animalName;
   final String? revealedName;
@@ -16,6 +31,7 @@ class QuizInputSection extends StatefulWidget {
   final int questionIndex;
   final bool showError;
   final VoidCallback onSubmit;
+  final List<int> revealedPositions;
 
   const QuizInputSection({
     super.key,
@@ -28,6 +44,7 @@ class QuizInputSection extends StatefulWidget {
     required this.questionIndex,
     this.showError = false,
     required this.onSubmit,
+    this.revealedPositions = const [],
   });
 
   @override
@@ -38,7 +55,9 @@ class _QuizInputSectionState extends State<QuizInputSection>
     with SingleTickerProviderStateMixin {
   late AnimationController _shakeController;
 
-  int get _letterCount => widget.animalName.replaceAll(' ', '').length;
+  int get _letterCount =>
+      widget.animalName.replaceAll(' ', '').length -
+      widget.revealedPositions.length;
 
   @override
   void initState() {
@@ -74,9 +93,10 @@ class _QuizInputSectionState extends State<QuizInputSection>
   }
 
   Widget _buildCharacterDisplay() {
-    final name = widget.animalName;
-    final typed = widget.controller.text;
+    final name = widget.animalName.toUpperCase();
+    final typed = widget.controller.text.toUpperCase();
     int typedIdx = 0;
+    int nameIdx = 0;
 
     final List<TextSpan> spans = [];
     final words = name.split(' ');
@@ -84,6 +104,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
     for (int w = 0; w < words.length; w++) {
       if (w > 0) {
         spans.add(const TextSpan(text: '   '));
+        nameIdx++; // account for space in name
       }
 
       final letters = words[w].split('');
@@ -92,34 +113,47 @@ class _QuizInputSectionState extends State<QuizInputSection>
           spans.add(const TextSpan(text: ' '));
         }
 
-        final hasChar = typedIdx < typed.length;
-        final char = hasChar ? typed[typedIdx] : '_';
+        final isRevealed = widget.revealedPositions.contains(nameIdx);
 
-        Color color;
-        if (widget.showError && hasChar) {
-          color = Colors.red.shade600;
-        } else if (hasChar) {
-          color = AppColors.deepPurple;
+        if (isRevealed) {
+          // Show the actual letter in gold — don't consume a typed char
+          spans.add(
+            TextSpan(
+              text: name[nameIdx],
+              style: const TextStyle(color: AppColors.gold),
+            ),
+          );
         } else {
-          color = Colors.grey.shade400;
+          final hasChar = typedIdx < typed.length;
+          final char = hasChar ? typed[typedIdx] : '_';
+
+          Color color;
+          if (widget.showError && hasChar) {
+            color = Colors.red.shade600;
+          } else if (hasChar) {
+            color = AppColors.deepPurple;
+          } else {
+            color = Colors.grey.shade400;
+          }
+
+          spans.add(
+            TextSpan(
+              text: char,
+              style: TextStyle(color: color),
+            ),
+          );
+
+          typedIdx++;
         }
 
-        spans.add(TextSpan(
-          text: char,
-          style: TextStyle(color: color),
-        ));
-
-        typedIdx++;
+        nameIdx++;
       }
     }
 
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
-        style: GoogleFonts.nunito(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-        ),
+        style: GoogleFonts.nunito(fontSize: 28, fontWeight: FontWeight.w700),
         children: spans,
       ),
     );
@@ -144,8 +178,8 @@ class _QuizInputSectionState extends State<QuizInputSection>
           child: showName
               ? Text(
                   widget.alreadyGuessed
-                      ? (widget.revealedName ?? '')
-                      : widget.revealedName!,
+                      ? (widget.revealedName ?? '').toUpperCase()
+                      : widget.revealedName!.toUpperCase(),
                   key: const ValueKey('revealed'),
                   style: GoogleFonts.nunito(
                     fontSize: 28,
@@ -161,8 +195,8 @@ class _QuizInputSectionState extends State<QuizInputSection>
                   builder: (context, child) {
                     final shakeOffset = _shakeController.isAnimating
                         ? sin(_shakeController.value * pi * 6) *
-                            8 *
-                            (1 - _shakeController.value)
+                              8 *
+                              (1 - _shakeController.value)
                         : 0.0;
                     return Transform.translate(
                       offset: Offset(shakeOffset, 0),
@@ -188,9 +222,13 @@ class _QuizInputSectionState extends State<QuizInputSection>
                             controller: widget.controller,
                             focusNode: widget.focusNode,
                             enabled: widget.enabled,
+                            enableInteractiveSelection: false,
+                            contextMenuBuilder: (_, __) =>
+                                const SizedBox.shrink(),
                             maxLength: _letterCount,
                             textCapitalization: TextCapitalization.words,
                             inputFormatters: [
+                              _UpperCaseTextFormatter(),
                               FilteringTextInputFormatter.deny(RegExp(r'\s')),
                               LengthLimitingTextInputFormatter(_letterCount),
                             ],
@@ -209,8 +247,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
         const SizedBox(height: 24),
         if (widget.alreadyGuessed) ...[
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.correctGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
