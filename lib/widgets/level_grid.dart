@@ -18,8 +18,10 @@ class LevelGrid extends StatelessWidget {
     final levels = gameState.levels;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: GridView.builder(
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.only(bottom: 8),
         itemCount: levels.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,

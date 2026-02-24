@@ -39,6 +39,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _showWrongMessage = false;
   bool _showResults = false;
   bool _hasText = false;
+  bool _hintsSheetOpen = false;
   String? _revealedName;
   String? _currentFunFact;
   final TextEditingController _controller = TextEditingController();
@@ -107,6 +108,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _showHintsSheet(List<String> hints, int hintsRevealed) {
     if (hintsRevealed <= 0) return;
+    setState(() => _hintsSheetOpen = true);
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -145,7 +147,9 @@ class _QuizScreenState extends State<QuizScreen> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      if (mounted) setState(() => _hintsSheetOpen = false);
+    });
   }
 
   Future<void> _useLetterReveal() async {
@@ -210,7 +214,6 @@ class _QuizScreenState extends State<QuizScreen> {
       );
     } else {
       setState(() {});
-      // Show the sheet only when keyboard is visible (inline hints are hidden)
       final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 100;
       if (keyboardVisible) {
         _showHintsSheet(animal.hints, result.hintsRevealed);
@@ -557,8 +560,8 @@ class _QuizScreenState extends State<QuizScreen> {
                           ),
                         ),
 
-                      // Inline revealed hints — only when keyboard is hidden
-                      if (hintsRevealed > 0 && !_answered && !alreadyGuessed && !keyboardVisible)
+                      // Inline revealed hints — only when keyboard is hidden and sheet is not open
+                      if (hintsRevealed > 0 && !_answered && !alreadyGuessed && !keyboardVisible && !_hintsSheetOpen)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: RevealedHints(

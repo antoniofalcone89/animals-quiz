@@ -19,14 +19,14 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'hello_user'.tr(args: [username.split(' ').first]),
             style: GoogleFonts.nunito(
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: FontWeight.w800,
               color: AppColors.deepPurple,
             ),
