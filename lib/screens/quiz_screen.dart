@@ -39,6 +39,7 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   late int _currentIndex;
   late List<int> _questionOrder;
+  late int _initialLevelCorrect;
   int _sessionCoins = 0;
   int _sessionCorrect = 0;
   bool _answered = false;
@@ -66,6 +67,9 @@ class _QuizScreenState extends State<QuizScreen> {
   void initState() {
     super.initState();
     _questionOrder = List.generate(widget.level.animals.length, (i) => i);
+    _initialLevelCorrect = widget.gameState.getLevelCorrectCount(
+      widget.level.id,
+    );
     // Start from the tapped animal, then continue through the rest
     final startIdx = _questionOrder.indexOf(widget.animalIndex);
     _questionOrder = [
@@ -108,7 +112,10 @@ class _QuizScreenState extends State<QuizScreen> {
         title: 'tutorial_input_title'.tr(),
         body: 'tutorial_input_body'.tr(),
         icon: Icons.keyboard_rounded,
-        spotlightPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        spotlightPadding: const EdgeInsets.symmetric(
+          horizontal: 4,
+          vertical: 6,
+        ),
       ),
       TutorialStep(
         targetKey: _hintButtonKey,
@@ -546,8 +553,16 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     if (_showResults) {
+      final persistedCorrect = widget.gameState.getLevelCorrectCount(
+        widget.level.id,
+      );
+      final displayedCorrect = max(
+        persistedCorrect,
+        _initialLevelCorrect + _sessionCorrect,
+      ).clamp(0, _questionOrder.length);
+
       return QuizResults(
-        correctCount: _sessionCorrect,
+        correctCount: displayedCorrect,
         totalQuestions: _questionOrder.length,
         coinsEarned: _sessionCoins,
         onBackToLevel: () => Navigator.of(context).pop(),
@@ -572,7 +587,16 @@ class _QuizScreenState extends State<QuizScreen> {
     final int? nextHintCost = hintsRevealed < animal.hints.length
         ? GameState.hintCosts[hintsRevealed]
         : null;
-    final progress = (_currentIndex + 1) / _questionOrder.length;
+    final persistedCorrect = widget.gameState.getLevelCorrectCount(
+      widget.level.id,
+    );
+    final completionCorrect = max(
+      persistedCorrect,
+      _initialLevelCorrect + _sessionCorrect,
+    ).clamp(0, _questionOrder.length);
+    final completionProgress = _questionOrder.isEmpty
+        ? 0.0
+        : completionCorrect / _questionOrder.length;
 
     final scaffold = Scaffold(
       resizeToAvoidBottomInset: false,
@@ -599,19 +623,18 @@ class _QuizScreenState extends State<QuizScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: CoinBadge(key: _coinBadgeKey, coins: widget.gameState.totalCoins, light: true),
+            child: CoinBadge(
+              key: _coinBadgeKey,
+              coins: widget.gameState.totalCoins,
+              light: true,
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Progress bar
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            minHeight: 4,
-          ),
+          // Progress bar (level completion)
+          _LevelProgressBar(progress: completionProgress),
 
           // Image zone — Expanded, fills remaining space above the panel.
           // The panel uses mainAxisSize.min so it only takes what it needs,
@@ -769,12 +792,14 @@ class _QuizScreenState extends State<QuizScreen> {
                         QuizInputSection(
                           key: _inputSectionKey,
                           animalName: animal.name,
-                          revealedName:
-                              alreadyGuessed ? animal.name : _revealedName,
+                          revealedName: alreadyGuessed
+                              ? animal.name
+                              : _revealedName,
                           alreadyGuessed: alreadyGuessed,
                           controller: _controller,
                           focusNode: _focusNode,
-                          enabled: !_answered &&
+                          enabled:
+                              !_answered &&
                               !alreadyGuessed &&
                               !_showWrongMessage,
                           questionIndex: _currentIndex,
@@ -785,51 +810,49 @@ class _QuizScreenState extends State<QuizScreen> {
 
                         const SizedBox(height: 12),
 
-                        // Hint buttons — AnimatedSize for smooth collapse
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 280),
-                          curve: Curves.easeInOut,
-                          child: (!alreadyGuessed && !_answered)
-                              ? Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Wrap(
-                                    alignment: WrapAlignment.center,
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      if (animal.hints.isNotEmpty)
-                                        HintButton(
-                                          key: _hintButtonKey,
-                                          hintsRevealed: hintsRevealed,
-                                          totalHints: animal.hints.length,
-                                          nextHintCost: nextHintCost,
-                                          canAfford: nextHintCost != null &&
-                                              widget.gameState.totalCoins >=
-                                                  nextHintCost,
-                                          onRequestHint: _useHint,
-                                          enabled: !_answered && !alreadyGuessed,
-                                        ),
-                                      LetterRevealButton(
-                                        key: _letterRevealKey,
-                                        lettersRevealed: lettersRevealed,
-                                        maxReveals: GameState.maxLetterReveals,
-                                        cost: GameState.letterRevealCost,
-                                        canAfford:
-                                            widget.gameState.totalCoins >=
-                                            GameState.letterRevealCost,
-                                        onReveal: _useLetterReveal,
-                                        enabled: !_answered && !alreadyGuessed,
-                                      ),
-                                      RevealAnimalButton(
-                                        key: _revealAnimalKey,
-                                        onReveal: _showRevealAdDialog,
-                                        enabled: !_answered && !alreadyGuessed,
-                                      ),
-                                    ],
+                        // Hint buttons — no nested AnimatedSize; the outer
+                        // AnimatedSize handles the height transition when
+                        // _answered flips, avoiding multi-step resizing.
+                        if (!alreadyGuessed && !_answered)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (animal.hints.isNotEmpty)
+                                  HintButton(
+                                    key: _hintButtonKey,
+                                    hintsRevealed: hintsRevealed,
+                                    totalHints: animal.hints.length,
+                                    nextHintCost: nextHintCost,
+                                    canAfford:
+                                        nextHintCost != null &&
+                                        widget.gameState.totalCoins >=
+                                            nextHintCost,
+                                    onRequestHint: _useHint,
+                                    enabled: !_answered && !alreadyGuessed,
                                   ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
+                                LetterRevealButton(
+                                  key: _letterRevealKey,
+                                  lettersRevealed: lettersRevealed,
+                                  maxReveals: GameState.maxLetterReveals,
+                                  cost: GameState.letterRevealCost,
+                                  canAfford:
+                                      widget.gameState.totalCoins >=
+                                      GameState.letterRevealCost,
+                                  onReveal: _useLetterReveal,
+                                  enabled: !_answered && !alreadyGuessed,
+                                ),
+                                RevealAnimalButton(
+                                  key: _revealAnimalKey,
+                                  onReveal: _showRevealAdDialog,
+                                  enabled: !_answered && !alreadyGuessed,
+                                ),
+                              ],
+                            ),
+                          ),
 
                         // Feedback (correct / wrong)
                         if (!alreadyGuessed)
@@ -878,6 +901,282 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Level progress bar with two animation layers:
+//   _tickCtrl  — fires on every correct answer; intensity scales with progress
+//   _celebCtrl — one-shot celebration when progress first reaches 1.0
+// ---------------------------------------------------------------------------
+
+class _LevelProgressBar extends StatefulWidget {
+  final double progress;
+  const _LevelProgressBar({required this.progress});
+
+  @override
+  State<_LevelProgressBar> createState() => _LevelProgressBarState();
+}
+
+class _LevelProgressBarState extends State<_LevelProgressBar>
+    with TickerProviderStateMixin {
+  // ── Per-step tick (replays on every progress increase) ──────────────────
+  late final AnimationController _tickCtrl;
+
+  // ── One-shot completion celebration ─────────────────────────────────────
+  late final AnimationController _celebCtrl;
+  late final Animation<double> _celebGlowIn;
+  late final Animation<double> _celebShimmer;
+  late final Animation<double> _celebPulse;
+  late final Animation<double> _celebGlowOut;
+
+  bool _celebFired = false;
+  double _prevProgress = 0.0;
+
+  // Intensity 0→1 that scales tick effects based on current progress:
+  //   0–40 % → small flash, 40–70 % → medium, 70–99 % → big + mini-shimmer
+  double get _intensity => widget.progress.clamp(0.0, 0.99);
+
+  // Bell-curve envelope for the tick (peaks at t=0.5)
+  double get _tickEnvelope => sin(_tickCtrl.value * pi);
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Tick: short, replays each correct answer
+    _tickCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..addListener(() => setState(() {}));
+
+    // Celebration: longer, fires once at completion
+    _celebCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..addListener(() => setState(() {}));
+
+    _celebGlowIn = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.0, 0.30, curve: Curves.easeOut),
+    );
+    _celebShimmer = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.15, 0.70, curve: Curves.easeInOut),
+    );
+    _celebPulse = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _celebCtrl,
+        curve: const Interval(0.45, 0.80, curve: Curves.easeInOut),
+      ),
+    );
+    _celebGlowOut = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.75, 1.0, curve: Curves.easeIn),
+    );
+
+    _prevProgress = widget.progress;
+    if (widget.progress >= 1.0) {
+      _celebFired = true; // restored session — static glow only
+    }
+  }
+
+  @override
+  void didUpdateWidget(_LevelProgressBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final prev = _prevProgress;
+    final next = widget.progress;
+    _prevProgress = next;
+
+    if (next <= prev) return; // no increase, nothing to do
+
+    if (!_celebFired && next >= 1.0) {
+      // Completion: cancel any running tick, fire celebration
+      _celebFired = true;
+      _tickCtrl.stop();
+      _celebCtrl.forward(from: 0);
+    } else if (next < 1.0) {
+      // Mid-level correct answer: replay tick animation
+      _tickCtrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tickCtrl.dispose();
+    _celebCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Height ───────────────────────────────────────────────────────────────
+
+  double get _barHeight {
+    if (_celebCtrl.isAnimating) {
+      // Celebration pulse: 4 → 8 → 4
+      final t = _celebPulse.value;
+      final wave = t <= 0.5 ? t * 2 : (1.0 - t) * 2;
+      return 4.0 + wave * 4.0;
+    }
+    if (_tickCtrl.isAnimating) {
+      // Tick pulse: grows more as player nears the end (4→5 early, 4→7 late)
+      final maxBump = 1.0 + _intensity * 3.0; // 1 px early → 4 px late
+      return 4.0 + _tickEnvelope * maxBump;
+    }
+    return 4.0;
+  }
+
+  // ── Glow ─────────────────────────────────────────────────────────────────
+
+  double get _glowAlpha {
+    final isComplete = widget.progress >= 1.0;
+
+    if (_celebCtrl.isAnimating) {
+      final steadyGlow = isComplete ? 0.45 : 0.0;
+      final burst = _celebGlowIn.value * (1.0 - _celebGlowOut.value) * 0.55;
+      return (steadyGlow + burst).clamp(0.0, 1.0);
+    }
+    if (_tickCtrl.isAnimating) {
+      // Tick flash: brighter near the end (0.15 early → 0.45 late)
+      return _tickEnvelope * (0.15 + _intensity * 0.30);
+    }
+    return isComplete ? 0.45 : 0.0;
+  }
+
+  double get _glowBlur {
+    if (_celebCtrl.isAnimating) return 12 + _celebGlowIn.value * 8;
+    if (_tickCtrl.isAnimating) return 6 + _intensity * 6;
+    return widget.progress >= 1.0 ? 12.0 : 0.0;
+  }
+
+  // ── Shimmer (celebration sweep) ──────────────────────────────────────────
+
+  double get _celebShimmerX => -0.6 + _celebShimmer.value * 2.2;
+
+  // ── Mini-shimmer for late-game ticks (progress > 60%) ───────────────────
+  // Stays at the tip of the filled bar and flares outward briefly.
+  double get _tickShimmerOpacity {
+    if (!_tickCtrl.isAnimating || _intensity < 0.60) return 0.0;
+    final extraIntensity = (_intensity - 0.60) / 0.39; // 0→1 over 60–99%
+    return _tickEnvelope * extraIntensity * 0.7;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isComplete = widget.progress >= 1.0;
+    final anyAnimating =
+        _celebCtrl.isAnimating || _tickCtrl.isAnimating || isComplete;
+
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: anyAnimating
+            ? [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: _glowAlpha),
+                  blurRadius: _glowBlur,
+                  spreadRadius: _celebCtrl.isAnimating
+                      ? _celebGlowIn.value * 2
+                      : 0,
+                ),
+              ]
+            : const [],
+      ),
+      child: Stack(
+        children: [
+          // Base progress bar
+          LinearProgressIndicator(
+            value: widget.progress,
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            minHeight: _barHeight,
+          ),
+
+          // Celebration shimmer sweep
+          if (_celebCtrl.isAnimating && _celebShimmer.value > 0)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final fadeOut = 1.0 -
+                      (_celebShimmer.value - 0.85).clamp(0.0, 0.15) / 0.15;
+                  return ClipRect(
+                    child: CustomPaint(
+                      painter: _ShimmerPainter(
+                        centerX: _celebShimmerX * w,
+                        stripeWidth: w * 0.25,
+                        opacity: _celebShimmer.value * fadeOut,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // Late-game tick: flare at the leading edge of the filled bar
+          if (_tickShimmerOpacity > 0)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  // Centre the flare at the current fill position
+                  final cx = widget.progress * w;
+                  return ClipRect(
+                    child: CustomPaint(
+                      painter: _ShimmerPainter(
+                        centerX: cx,
+                        stripeWidth: w * 0.12,
+                        opacity: _tickShimmerOpacity,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Paints a translucent white Gaussian-like stripe for the shimmer effect.
+class _ShimmerPainter extends CustomPainter {
+  final double centerX;
+  final double stripeWidth;
+  final double opacity;
+
+  const _ShimmerPainter({
+    required this.centerX,
+    required this.stripeWidth,
+    required this.opacity,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final gradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        Colors.white.withValues(alpha: 0.0),
+        Colors.white.withValues(alpha: opacity * 0.6),
+        Colors.white.withValues(alpha: opacity * 0.9),
+        Colors.white.withValues(alpha: opacity * 0.6),
+        Colors.white.withValues(alpha: 0.0),
+      ],
+      stops: [
+        ((centerX - stripeWidth) / size.width).clamp(0.0, 1.0),
+        ((centerX - stripeWidth * 0.4) / size.width).clamp(0.0, 1.0),
+        (centerX / size.width).clamp(0.0, 1.0),
+        ((centerX + stripeWidth * 0.4) / size.width).clamp(0.0, 1.0),
+        ((centerX + stripeWidth) / size.width).clamp(0.0, 1.0),
+      ],
+    );
+    canvas.drawRect(rect, Paint()..shader = gradient.createShader(rect));
+  }
+
+  @override
+  bool shouldRepaint(_ShimmerPainter old) =>
+      old.centerX != centerX ||
+      old.stripeWidth != stripeWidth ||
+      old.opacity != opacity;
+}
+
 /// Icon-only circular next button with a bounce-in entrance animation.
 class _NextIconButton extends StatefulWidget {
   final VoidCallback onTap;
@@ -900,9 +1199,10 @@ class _NextIconButtonState extends State<_NextIconButton>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _scale = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
     _opacity = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.0, 0.5, curve: Curves.easeOut),

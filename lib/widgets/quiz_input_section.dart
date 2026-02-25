@@ -182,7 +182,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
                       : widget.revealedName!.toUpperCase(),
                   key: const ValueKey('revealed'),
                   style: GoogleFonts.nunito(
-                    fontSize: 28,
+                    fontSize: 36,
                     fontWeight: FontWeight.w800,
                     color: AppColors.correctGreen,
                     letterSpacing: 2,
@@ -244,7 +244,7 @@ class _QuizInputSectionState extends State<QuizInputSection>
                   ),
                 ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 10),
         if (widget.alreadyGuessed) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
