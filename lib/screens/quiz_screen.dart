@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../services/admob_service.dart';
+import '../utils/string_similarity.dart';
 import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
@@ -490,14 +491,10 @@ class _QuizScreenState extends State<QuizScreen> {
     );
     final guess = _insertSpaces(typed, animal.name, revealedPos);
 
-    final result = await widget.gameState.submitAnswer(
-      widget.level.id,
-      _currentAnimalIndex,
-      guess,
-    );
+    // Check correctness locally for instant feedback — no network wait.
+    final isCorrect = isFuzzyMatch(guess, animal.name);
 
-    if (result.correct) {
-      final animal = widget.level.animals[_currentAnimalIndex];
+    if (isCorrect) {
       String? funFact;
       if (animal.funFacts.isNotEmpty) {
         funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
@@ -505,14 +502,24 @@ class _QuizScreenState extends State<QuizScreen> {
       _focusNode.unfocus();
       setState(() {
         _answered = true;
-        _revealedName = result.correctAnswer ?? animal.name;
-        _sessionCoins += result.coinsAwarded;
+        _revealedName = animal.name;
         _sessionCorrect++;
         _currentFunFact = funFact;
       });
+
+      // Persist to backend in the background; update coins when it responds.
+      // On network failure we swallow silently — progress will appear unguessed
+      // on next load, which is acceptable vs. delaying feedback every time.
+      widget.gameState
+          .submitAnswer(widget.level.id, _currentAnimalIndex, guess)
+          .then((result) {
+            if (!mounted) return;
+            setState(() => _sessionCoins += result.coinsAwarded);
+          })
+          .catchError((_) {});
     } else {
       setState(() => _showWrongMessage = true);
-      Future.delayed(const Duration(milliseconds: 800), () {
+      Future.delayed(const Duration(milliseconds: 1400), () {
         if (!mounted) return;
         _controller.clear();
         _focusNode.requestFocus();
