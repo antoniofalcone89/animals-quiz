@@ -613,14 +613,14 @@ class _QuizScreenState extends State<QuizScreen> {
             minHeight: 4,
           ),
 
-          // Image zone — fills purple background
+          // Image zone — Expanded, fills remaining space above the panel.
+          // The panel uses mainAxisSize.min so it only takes what it needs,
+          // leaving the image zone as large as possible at all times.
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (_focusNode.hasFocus) {
-                  _focusNode.unfocus();
-                }
+                if (_focusNode.hasFocus) _focusNode.unfocus();
               },
               child: Center(
                 child: Padding(
@@ -643,7 +643,10 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
 
-          // Bottom panel — white sheet pinned above keyboard
+          // Bottom panel — wraps content tightly (no excess white space).
+          // AnimatedSize on the inner content means every height change
+          // (hints appearing, feedback, keyboard inset) animates smoothly
+          // instead of jumping abruptly.
           Container(
             width: double.infinity,
             decoration: const BoxDecoration(
@@ -664,203 +667,195 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 ),
 
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // "View hints" chip when keyboard is visible and hints are bought
-                      if (hintsRevealed > 0 &&
-                          !_answered &&
-                          !alreadyGuessed &&
-                          keyboardVisible)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: GestureDetector(
-                            onTap: () =>
-                                _showHintsSheet(animal.hints, hintsRevealed),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.deepPurple.withValues(
-                                  alpha: 0.07,
+                // All panel content wrapped in AnimatedSize so panel height
+                // changes are smooth regardless of what triggers them.
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // "View hints" chip — keyboard visible + hints bought
+                        if (hintsRevealed > 0 &&
+                            !_answered &&
+                            !alreadyGuessed &&
+                            keyboardVisible)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: GestureDetector(
+                              onTap: () =>
+                                  _showHintsSheet(animal.hints, hintsRevealed),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 7,
                                 ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
+                                decoration: BoxDecoration(
                                   color: AppColors.deepPurple.withValues(
-                                    alpha: 0.2,
+                                    alpha: 0.07,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppColors.deepPurple.withValues(
+                                      alpha: 0.2,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.lightbulb_outline,
-                                    size: 15,
-                                    color: AppColors.deepPurple,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'hints'.tr(),
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.lightbulb_outline,
+                                      size: 15,
                                       color: AppColors.deepPurple,
                                     ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.deepPurple,
-                                      shape: BoxShape.circle,
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'hints'.tr(),
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.deepPurple,
+                                      ),
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '$hintsRevealed',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      width: 18,
+                                      height: 18,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.deepPurple,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$hintsRevealed',
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 15,
-                                    color: AppColors.deepPurple,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Inline revealed hints — only when keyboard is hidden and sheet is not open
-                      if (hintsRevealed > 0 &&
-                          !_answered &&
-                          !alreadyGuessed &&
-                          !keyboardVisible &&
-                          !_hintsSheetOpen)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: RevealedHints(
-                            hints: animal.hints,
-                            hintsRevealed: hintsRevealed,
-                          ),
-                        ),
-
-                      // Input
-                      QuizInputSection(
-                        key: _inputSectionKey,
-                        animalName: animal.name,
-                        revealedName: alreadyGuessed
-                            ? animal.name
-                            : _revealedName,
-                        alreadyGuessed: alreadyGuessed,
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        enabled:
-                            !_answered && !alreadyGuessed && !_showWrongMessage,
-                        questionIndex: _currentIndex,
-                        showError: _showWrongMessage,
-                        onSubmit: _onSubmit,
-                        revealedPositions: revealedPositions,
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Hint buttons row — visible above keyboard
-                      if (!alreadyGuessed && !_answered)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (animal.hints.isNotEmpty)
-                                HintButton(
-                                  key: _hintButtonKey,
-                                  hintsRevealed: hintsRevealed,
-                                  totalHints: animal.hints.length,
-                                  nextHintCost: nextHintCost,
-                                  canAfford:
-                                      nextHintCost != null &&
-                                      widget.gameState.totalCoins >=
-                                          nextHintCost,
-                                  onRequestHint: _useHint,
-                                  enabled: !_answered && !alreadyGuessed,
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 15,
+                                      color: AppColors.deepPurple,
+                                    ),
+                                  ],
                                 ),
-                              LetterRevealButton(
-                                key: _letterRevealKey,
-                                lettersRevealed: lettersRevealed,
-                                maxReveals: GameState.maxLetterReveals,
-                                cost: GameState.letterRevealCost,
-                                canAfford:
-                                    widget.gameState.totalCoins >=
-                                    GameState.letterRevealCost,
-                                onReveal: _useLetterReveal,
-                                enabled: !_answered && !alreadyGuessed,
-                              ),
-                              RevealAnimalButton(
-                                key: _revealAnimalKey,
-                                onReveal: _showRevealAdDialog,
-                                enabled: !_answered && !alreadyGuessed,
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // Correct / wrong feedback
-                      if (!alreadyGuessed)
-                        QuizFeedback(
-                          showWrongMessage: _showWrongMessage,
-                          answered: _answered,
-                          onNext: _next,
-                          funFact: _currentFunFact,
-                        ),
-
-                      // Already guessed — next button
-                      if (alreadyGuessed) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _next,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.deepPurple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Text(
-                              'next'.tr(),
-                              style: GoogleFonts.nunito(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
+
+                        // Inline hints — keyboard hidden, sheet closed
+                        if (hintsRevealed > 0 &&
+                            !_answered &&
+                            !alreadyGuessed &&
+                            !keyboardVisible &&
+                            !_hintsSheetOpen)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: RevealedHints(
+                              hints: animal.hints,
+                              hintsRevealed: hintsRevealed,
+                            ),
+                          ),
+
+                        // Input section
+                        QuizInputSection(
+                          key: _inputSectionKey,
+                          animalName: animal.name,
+                          revealedName:
+                              alreadyGuessed ? animal.name : _revealedName,
+                          alreadyGuessed: alreadyGuessed,
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          enabled: !_answered &&
+                              !alreadyGuessed &&
+                              !_showWrongMessage,
+                          questionIndex: _currentIndex,
+                          showError: _showWrongMessage,
+                          onSubmit: _onSubmit,
+                          revealedPositions: revealedPositions,
                         ),
+
+                        const SizedBox(height: 12),
+
+                        // Hint buttons — AnimatedSize for smooth collapse
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeInOut,
+                          child: (!alreadyGuessed && !_answered)
+                              ? Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Wrap(
+                                    alignment: WrapAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (animal.hints.isNotEmpty)
+                                        HintButton(
+                                          key: _hintButtonKey,
+                                          hintsRevealed: hintsRevealed,
+                                          totalHints: animal.hints.length,
+                                          nextHintCost: nextHintCost,
+                                          canAfford: nextHintCost != null &&
+                                              widget.gameState.totalCoins >=
+                                                  nextHintCost,
+                                          onRequestHint: _useHint,
+                                          enabled: !_answered && !alreadyGuessed,
+                                        ),
+                                      LetterRevealButton(
+                                        key: _letterRevealKey,
+                                        lettersRevealed: lettersRevealed,
+                                        maxReveals: GameState.maxLetterReveals,
+                                        cost: GameState.letterRevealCost,
+                                        canAfford:
+                                            widget.gameState.totalCoins >=
+                                            GameState.letterRevealCost,
+                                        onReveal: _useLetterReveal,
+                                        enabled: !_answered && !alreadyGuessed,
+                                      ),
+                                      RevealAnimalButton(
+                                        key: _revealAnimalKey,
+                                        onReveal: _showRevealAdDialog,
+                                        enabled: !_answered && !alreadyGuessed,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+
+                        // Feedback (correct / wrong)
+                        if (!alreadyGuessed)
+                          QuizFeedback(
+                            showWrongMessage: _showWrongMessage,
+                            answered: _answered,
+                            onNext: _next,
+                            funFact: _currentFunFact,
+                          ),
+
+                        // Already guessed — icon-only next button
+                        if (alreadyGuessed) ...[
+                          const SizedBox(height: 16),
+                          _NextIconButton(onTap: _next),
+                          const SizedBox(height: 8),
+                        ],
                       ],
-
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
-                        height: max(effectiveBottomInset, safeBottom) + 12,
-                      ),
-                    ],
+                    ),
                   ),
+                ),
+
+                // Keyboard inset — animates smoothly as keyboard appears/hides
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  height: max(effectiveBottomInset, safeBottom) + 12,
                 ),
               ],
             ),
@@ -879,6 +874,78 @@ class _QuizScreenState extends State<QuizScreen> {
           onComplete: _onTutorialComplete,
         ),
       ],
+    );
+  }
+}
+
+/// Icon-only circular next button with a bounce-in entrance animation.
+class _NextIconButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _NextIconButton({required this.onTap});
+
+  @override
+  State<_NextIconButton> createState() => _NextIconButtonState();
+}
+
+class _NextIconButtonState extends State<_NextIconButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _scale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: ScaleTransition(
+        scale: _scale,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.deepPurple,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.deepPurple.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.arrow_forward_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

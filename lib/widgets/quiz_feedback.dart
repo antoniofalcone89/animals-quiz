@@ -265,29 +265,31 @@ class _QuizFeedbackState extends State<QuizFeedback>
 
           const SizedBox(height: 16),
 
-          // Next button
+          // Next button — icon only with bounce entrance
           FadeTransition(
             opacity: _buttonFade,
             child: ScaleTransition(
               scale: _buttonScale,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: widget.onNext,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.deepPurple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+              child: GestureDetector(
+                onTap: widget.onNext,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: AppColors.deepPurple,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.deepPurple.withValues(alpha: 0.35),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    'next'.tr(),
-                    style: GoogleFonts.nunito(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                    size: 30,
                   ),
                 ),
               ),
