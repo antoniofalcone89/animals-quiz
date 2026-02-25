@@ -1,6 +1,8 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../config/env.dart';
+import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
 import 'coin_badge.dart';
 import 'shimmer_loading.dart';
@@ -395,6 +397,40 @@ class ProfileView extends StatelessWidget {
               ),
             ),
           ),
+          if (Env.debugUnlockAll) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                leading: const Icon(Icons.replay, color: Colors.orange),
+                title: Text(
+                  'Reset Tutorial',
+                  style: GoogleFonts.nunito(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange,
+                  ),
+                ),
+                onTap: () async {
+                  await TutorialService.resetTutorial();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tutorial reset — open level 1 to see it again')),
+                    );
+                  }
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(

@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../services/admob_service.dart';
+import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
 import '../widgets/coin_badge.dart';
@@ -15,6 +16,8 @@ import '../widgets/quiz_hint_section.dart'
     show HintButton, LetterRevealButton, RevealAnimalButton, RevealedHints;
 import '../widgets/quiz_input_section.dart';
 import '../widgets/quiz_results.dart';
+import '../widgets/tutorial/tutorial_overlay.dart';
+import '../widgets/tutorial/tutorial_step.dart';
 
 class QuizScreen extends StatefulWidget {
   final Level level;
@@ -47,8 +50,16 @@ class _QuizScreenState extends State<QuizScreen> {
   RewardedAd? _rewardedAd;
   bool _isLoadingRewardedAd = false;
   bool _isShowingRewardedAd = false;
+  bool _showTutorial = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+
+  // GlobalKeys for tutorial spotlight targets
+  final GlobalKey _inputSectionKey = GlobalKey();
+  final GlobalKey _hintButtonKey = GlobalKey();
+  final GlobalKey _letterRevealKey = GlobalKey();
+  final GlobalKey _revealAnimalKey = GlobalKey();
+  final GlobalKey _coinBadgeKey = GlobalKey();
 
   @override
   void initState() {
@@ -63,6 +74,77 @@ class _QuizScreenState extends State<QuizScreen> {
     _currentIndex = 0;
     _controller.addListener(_onTextChanged);
     _loadRewardedAd();
+    _checkTutorial();
+  }
+
+  void _checkTutorial() {
+    // Only show for the first level
+    if (widget.level.id != 1) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final seen = await TutorialService.hasSeenTutorial();
+      if (!seen && mounted) {
+        setState(() => _showTutorial = true);
+      }
+    });
+  }
+
+  void _onTutorialComplete() {
+    TutorialService.markTutorialSeen();
+    setState(() => _showTutorial = false);
+  }
+
+  List<TutorialStep> _buildTutorialSteps() {
+    return [
+      TutorialStep(
+        title: 'tutorial_welcome_title'.tr(),
+        body: 'tutorial_welcome_body'.tr(),
+        spotlightShape: SpotlightShape.none,
+        icon: Icons.waving_hand_rounded,
+      ),
+      TutorialStep(
+        targetKey: _inputSectionKey,
+        title: 'tutorial_input_title'.tr(),
+        body: 'tutorial_input_body'.tr(),
+        icon: Icons.keyboard_rounded,
+        spotlightPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      ),
+      TutorialStep(
+        targetKey: _hintButtonKey,
+        title: 'tutorial_hint_title'.tr(),
+        body: 'tutorial_hint_body'.tr(),
+        icon: Icons.lightbulb_outline,
+        spotlightPadding: const EdgeInsets.all(6),
+      ),
+      TutorialStep(
+        targetKey: _letterRevealKey,
+        title: 'tutorial_letter_title'.tr(),
+        body: 'tutorial_letter_body'.tr(),
+        icon: Icons.abc_rounded,
+        spotlightPadding: const EdgeInsets.all(6),
+      ),
+      TutorialStep(
+        targetKey: _revealAnimalKey,
+        title: 'tutorial_reveal_title'.tr(),
+        body: 'tutorial_reveal_body'.tr(),
+        icon: Icons.help_outline_rounded,
+        spotlightPadding: const EdgeInsets.all(6),
+      ),
+      TutorialStep(
+        targetKey: _coinBadgeKey,
+        title: 'tutorial_coins_title'.tr(),
+        body: 'tutorial_coins_body'.tr(),
+        spotlightShape: SpotlightShape.roundedRect,
+        icon: Icons.monetization_on_outlined,
+        spotlightPadding: const EdgeInsets.all(6),
+      ),
+      TutorialStep(
+        title: 'tutorial_leaderboard_title'.tr(),
+        body: 'tutorial_leaderboard_body'.tr(),
+        spotlightShape: SpotlightShape.none,
+        icon: Icons.leaderboard_rounded,
+      ),
+    ];
   }
 
   void _onTextChanged() {
@@ -485,7 +567,7 @@ class _QuizScreenState extends State<QuizScreen> {
         : null;
     final progress = (_currentIndex + 1) / _questionOrder.length;
 
-    return Scaffold(
+    final scaffold = Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.deepPurple,
       appBar: AppBar(
@@ -510,7 +592,7 @@ class _QuizScreenState extends State<QuizScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: CoinBadge(coins: widget.gameState.totalCoins, light: true),
+            child: CoinBadge(key: _coinBadgeKey, coins: widget.gameState.totalCoins, light: true),
           ),
         ],
       ),
@@ -670,6 +752,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
                       // Input
                       QuizInputSection(
+                        key: _inputSectionKey,
                         animalName: animal.name,
                         revealedName: alreadyGuessed
                             ? animal.name
@@ -698,6 +781,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             children: [
                               if (animal.hints.isNotEmpty)
                                 HintButton(
+                                  key: _hintButtonKey,
                                   hintsRevealed: hintsRevealed,
                                   totalHints: animal.hints.length,
                                   nextHintCost: nextHintCost,
@@ -709,6 +793,7 @@ class _QuizScreenState extends State<QuizScreen> {
                                   enabled: !_answered && !alreadyGuessed,
                                 ),
                               LetterRevealButton(
+                                key: _letterRevealKey,
                                 lettersRevealed: lettersRevealed,
                                 maxReveals: GameState.maxLetterReveals,
                                 cost: GameState.letterRevealCost,
@@ -719,6 +804,7 @@ class _QuizScreenState extends State<QuizScreen> {
                                 enabled: !_answered && !alreadyGuessed,
                               ),
                               RevealAnimalButton(
+                                key: _revealAnimalKey,
                                 onReveal: _showRevealAdDialog,
                                 enabled: !_answered && !alreadyGuessed,
                               ),
@@ -774,6 +860,18 @@ class _QuizScreenState extends State<QuizScreen> {
           ),
         ],
       ),
+    );
+
+    if (!_showTutorial) return scaffold;
+
+    return Stack(
+      children: [
+        scaffold,
+        TutorialOverlay(
+          steps: _buildTutorialSteps(),
+          onComplete: _onTutorialComplete,
+        ),
+      ],
     );
   }
 }
