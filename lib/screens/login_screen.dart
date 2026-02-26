@@ -78,6 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final username = authRepo.displayName ?? user.username;
       final gameState = await _createGameState(username);
+      gameState.setPhotoUrl(authRepo.photoUrl);
       gameState.setInitialStats(
         coins: user.totalCoins,
         points: user.totalPoints,

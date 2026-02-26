@@ -54,6 +54,9 @@ class MockAuthRepository implements AuthRepository {
   String? get displayName => _signedIn ? 'Mock User' : null;
 
   @override
+  String? get photoUrl => null;
+
+  @override
   bool get isAnonymous => _isAnonymous;
 
   @override

@@ -54,6 +54,7 @@ class GameState extends ChangeNotifier {
   final QuizRepository _quizRepository;
 
   String _username = 'Guest';
+  String? _photoUrl;
   int _totalCoins = 0;
   int _totalPoints = 0;
   final Map<int, List<bool>> _levelProgress = {};
@@ -68,6 +69,7 @@ class GameState extends ChangeNotifier {
     : _quizRepository = quizRepository;
 
   String get username => _username;
+  String? get photoUrl => _photoUrl;
   int get totalCoins => _totalCoins;
   int get totalPoints => _totalPoints;
   Map<int, List<bool>> get levelProgress => _levelProgress;
@@ -79,6 +81,11 @@ class GameState extends ChangeNotifier {
 
   void setUsername(String name) {
     _username = name.isEmpty ? 'Guest' : name;
+    notifyListeners();
+  }
+
+  void setPhotoUrl(String? url) {
+    _photoUrl = url;
     notifyListeners();
   }
 

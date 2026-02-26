@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -131,15 +132,23 @@ class _LeaderboardTile extends StatelessWidget {
           backgroundColor: isTop3
               ? AppColors.gold.withValues(alpha: 0.15)
               : AppColors.deepPurple.withValues(alpha: 0.08),
-          child: medal != null
-              ? Text(medal, style: const TextStyle(fontSize: 20))
-              : Text(
-                  '${entry.rank}',
-                  style: GoogleFonts.nunito(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.deepPurple,
-                  ),
-                ),
+          backgroundImage: !isTop3 && entry.photoUrl != null
+              ? CachedNetworkImageProvider(entry.photoUrl!)
+              : null,
+          onBackgroundImageError: !isTop3 && entry.photoUrl != null
+              ? (_, __) {}
+              : null,
+          child: (!isTop3 && entry.photoUrl != null)
+              ? null
+              : medal != null
+                  ? Text(medal, style: const TextStyle(fontSize: 20))
+                  : Text(
+                      '${entry.rank}',
+                      style: GoogleFonts.nunito(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.deepPurple,
+                      ),
+                    ),
         ),
         title: Text(
           entry.username,

@@ -50,7 +50,7 @@ class FirebaseAuthRepository implements AuthRepository {
       await _firebaseAuth.currentUser?.updateDisplayName(username);
       final json = await _client.post(
         '/auth/register',
-        body: {'username': username},
+        body: {'username': username, 'photoUrl': _firebaseAuth.currentUser?.photoURL},
       );
       return User.fromJson(json);
     } on ApiException catch (e) {
@@ -80,6 +80,9 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   String? get displayName => _firebaseAuth.currentUser?.displayName;
+
+  @override
+  String? get photoUrl => _firebaseAuth.currentUser?.photoURL;
 
   @override
   bool get isAnonymous => _firebaseAuth.currentUser?.isAnonymous ?? false;
