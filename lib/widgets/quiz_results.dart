@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import 'coin_badge.dart';
 
 class QuizResults extends StatelessWidget {
   final int correctCount;
@@ -19,6 +20,8 @@ class QuizResults extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isPerfect = totalQuestions > 0 && correctCount >= totalQuestions;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -30,7 +33,7 @@ class QuizResults extends StatelessWidget {
               const Text('\u{1F389}', style: TextStyle(fontSize: 64)),
               const SizedBox(height: 24),
               Text(
-                'quiz_complete'.tr(),
+                'level_completed'.tr(),
                 style: GoogleFonts.nunito(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -57,29 +60,55 @@ class QuizResults extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '$correctCount / $totalQuestions',
+                      '$correctCount/$totalQuestions',
                       style: GoogleFonts.nunito(
                         fontSize: 48,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('\u{1FA99}', style: TextStyle(fontSize: 24)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'coins_earned'.tr(args: [coinsEarned.toString()]),
+                    if (isPerfect) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        child: Text(
+                          'perfect_score'.tr(),
                           style: GoogleFonts.nunito(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
                             color: AppColors.gold,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                    if (coinsEarned > 0) ...[
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CoinIcon(size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            'coins_earned'.tr(args: [coinsEarned.toString()]),
+                            style: GoogleFonts.nunito(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.gold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

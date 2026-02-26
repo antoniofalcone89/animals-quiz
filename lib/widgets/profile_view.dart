@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,6 +10,7 @@ import 'shimmer_loading.dart';
 
 class ProfileView extends StatelessWidget {
   final String username;
+  final String? photoUrl;
   final int totalCoins;
   final int totalPoints;
   final bool isStatsLoading;
@@ -21,6 +23,7 @@ class ProfileView extends StatelessWidget {
   const ProfileView({
     super.key,
     required this.username,
+    this.photoUrl,
     required this.totalCoins,
     required this.totalPoints,
     this.isStatsLoading = false,
@@ -160,14 +163,22 @@ class ProfileView extends StatelessWidget {
             backgroundColor: isGuest
                 ? Colors.orange.withValues(alpha: 0.1)
                 : AppColors.deepPurple.withValues(alpha: 0.1),
-            child: Text(
-              username.isNotEmpty ? username[0].toUpperCase() : '?',
-              style: GoogleFonts.nunito(
-                fontSize: 40,
-                fontWeight: FontWeight.w900,
-                color: isGuest ? Colors.orange : AppColors.deepPurple,
-              ),
-            ),
+            backgroundImage: photoUrl != null
+                ? CachedNetworkImageProvider(photoUrl!)
+                : null,
+            onBackgroundImageError: photoUrl != null
+                ? (_, __) {}
+                : null,
+            child: photoUrl == null
+                ? Text(
+                    username.isNotEmpty ? username[0].toUpperCase() : '?',
+                    style: GoogleFonts.nunito(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w900,
+                      color: isGuest ? Colors.orange : AppColors.deepPurple,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(height: 16),
           Text(

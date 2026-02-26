@@ -18,9 +18,10 @@
   "wrong_answer": "Non \u00e8 corretto. Riprova!",
   "correct_answer": "Risposta esatta! +10 Monete \ud83c\udf89",
   "next": "AVANTI \u2192",
-  "quiz_complete": "Quiz Completato!",
+  "level_completed": "Livello completato!",
   "score": "Punteggio",
-  "coins_earned": "+{} Monete Guadagnate",
+  "perfect_score": "Perfetto!",
+  "coins_earned": "+{} Monete guadagnate",
   "back_to_level": "TORNA AL LIVELLO",
   "questions_count": "{} Domande",
   "questions_progress": "{}/{}",
@@ -80,11 +81,12 @@
   "tutorial_letter_title": "Rivela una Lettera",
   "tutorial_letter_body": "Hai bisogno di pi\u00f9 aiuto? Rivela una lettera del nome per 30 monete.",
   "tutorial_reveal_title": "Rivela l'Animale",
-  "tutorial_reveal_body": "Completamente bloccato? Tocca qui per rivelare subito il nome dell'animale gratis!",
+  "tutorial_reveal_body": "Completamente bloccato? Tocca qui per rivelare subito il nome dell'animale!",
   "tutorial_coins_title": "Le Tue Monete",
   "tutorial_coins_body": "Guadagni monete per ogni risposta corretta. Usale per comprare suggerimenti e rivelare lettere!",
   "tutorial_score_title": "Guadagna Punti",
   "tutorial_score_body": "Rispondi senza usare suggerimenti per guadagnare pi\u00f9 punti. I punti determinano la tua posizione in classifica!",
   "tutorial_leaderboard_title": "Classifica",
-  "tutorial_leaderboard_body": "Competi con altri giocatori! Meno suggerimenti usi, pi\u00f9 in alto sarai in classifica."
+  "tutorial_leaderboard_body": "Competi con altri giocatori! Meno suggerimenti usi, pi\u00f9 in alto sarai in classifica.",
+  "you": "tu"
 }

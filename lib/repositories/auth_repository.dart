@@ -25,6 +25,9 @@ abstract class AuthRepository {
   /// Display name from the auth provider (e.g. Google account name).
   String? get displayName;
 
+  /// Photo URL from the auth provider (e.g. Google profile picture).
+  String? get photoUrl;
+
   /// Whether the current user is anonymous (guest).
   bool get isAnonymous;
 

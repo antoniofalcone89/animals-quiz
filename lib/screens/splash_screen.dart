@@ -48,6 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
         final gameState = GameState(quizRepository: sl.quizRepository);
         final username = authRepo.displayName ?? user.username;
         gameState.setUsername(username);
+        gameState.setPhotoUrl(authRepo.photoUrl);
         gameState.setInitialStats(
           coins: user.totalCoins,
           points: user.totalPoints,

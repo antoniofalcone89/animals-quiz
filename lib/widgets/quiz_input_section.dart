@@ -52,8 +52,21 @@ class QuizInputSection extends StatefulWidget {
 }
 
 class _QuizInputSectionState extends State<QuizInputSection>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _shakeController;
+    with TickerProviderStateMixin {
+  // Wrong-answer shake
+  late final AnimationController _shakeCtrl;
+
+  // Correct-answer reveal transition (input out → name in)
+  late final AnimationController _revealCtrl;
+
+  // Input slides up + fades out over the first 40 % of the reveal
+  late final Animation<double> _inputFade;
+  late final Animation<double> _inputSlideY;
+
+  // Revealed name fades in, slides up from below, scales with spring overshoot
+  late final Animation<double> _revealFade;
+  late final Animation<double> _revealSlideY;
+  late final Animation<double> _revealScale;
 
   int get _letterCount =>
       widget.animalName.replaceAll(' ', '').length -
@@ -62,22 +75,86 @@ class _QuizInputSectionState extends State<QuizInputSection>
   @override
   void initState() {
     super.initState();
-    _shakeController = AnimationController(
+
+    _shakeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
+
+    _revealCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..addListener(() => setState(() {}));
+
+    // Input exits
+    _inputFade = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _revealCtrl,
+        curve: const Interval(0.0, 0.40, curve: Curves.easeIn),
+      ),
+    );
+    _inputSlideY = Tween<double>(begin: 0.0, end: -18.0).animate(
+      CurvedAnimation(
+        parent: _revealCtrl,
+        curve: const Interval(0.0, 0.40, curve: Curves.easeIn),
+      ),
+    );
+
+    // Revealed name enters
+    _revealFade = CurvedAnimation(
+      parent: _revealCtrl,
+      curve: const Interval(0.30, 0.75, curve: Curves.easeOut),
+    );
+    _revealSlideY = Tween<double>(begin: 22.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _revealCtrl,
+        curve: const Interval(0.30, 0.90, curve: Curves.easeOutCubic),
+      ),
+    );
+    _revealScale = Tween<double>(begin: 0.78, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _revealCtrl,
+        curve: const Interval(0.35, 1.0, curve: Curves.easeOutBack),
+      ),
+    );
+
     widget.controller.addListener(_onInput);
+
+    // If already revealed on first build (restored session), skip to end
+    if (widget.revealedName != null || widget.alreadyGuessed) {
+      _revealCtrl.value = 1.0;
+    }
   }
 
   @override
   void didUpdateWidget(QuizInputSection oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (widget.showError && !oldWidget.showError) {
-      _shakeController.forward(from: 0);
+      _shakeCtrl.forward(from: 0);
     }
+
     if (widget.controller != oldWidget.controller) {
       oldWidget.controller.removeListener(_onInput);
       widget.controller.addListener(_onInput);
+    }
+
+    // Moving to a new question — reset or skip to final state immediately
+    if (widget.questionIndex != oldWidget.questionIndex) {
+      if (widget.alreadyGuessed || widget.revealedName != null) {
+        _revealCtrl.value = 1.0;
+      } else {
+        _revealCtrl.value = 0.0;
+      }
+      return;
+    }
+
+    // Correct answer just submitted — play reveal animation
+    final justRevealed =
+        widget.revealedName != null && oldWidget.revealedName == null;
+    final justGuessed = widget.alreadyGuessed && !oldWidget.alreadyGuessed;
+    if (justRevealed || justGuessed) {
+      _revealCtrl.forward(from: 0);
     }
   }
 
@@ -88,9 +165,12 @@ class _QuizInputSectionState extends State<QuizInputSection>
   @override
   void dispose() {
     widget.controller.removeListener(_onInput);
-    _shakeController.dispose();
+    _shakeCtrl.dispose();
+    _revealCtrl.dispose();
     super.dispose();
   }
+
+  // ── Character display (underscores + typed letters) ──────────────────────
 
   Widget _buildCharacterDisplay() {
     final name = widget.animalName.toUpperCase();
@@ -104,19 +184,16 @@ class _QuizInputSectionState extends State<QuizInputSection>
     for (int w = 0; w < words.length; w++) {
       if (w > 0) {
         spans.add(const TextSpan(text: '   '));
-        nameIdx++; // account for space in name
+        nameIdx++;
       }
 
       final letters = words[w].split('');
       for (int l = 0; l < letters.length; l++) {
-        if (l > 0) {
-          spans.add(const TextSpan(text: ' '));
-        }
+        if (l > 0) spans.add(const TextSpan(text: ' '));
 
         final isRevealed = widget.revealedPositions.contains(nameIdx);
 
         if (isRevealed) {
-          // Show the actual letter in gold — don't consume a typed char
           spans.add(
             TextSpan(
               text: name[nameIdx],
@@ -142,7 +219,6 @@ class _QuizInputSectionState extends State<QuizInputSection>
               style: TextStyle(color: color),
             ),
           );
-
           typedIdx++;
         }
 
@@ -159,92 +235,116 @@ class _QuizInputSectionState extends State<QuizInputSection>
     );
   }
 
+  // ── Input widget (shake + character blanks + hidden TextField) ───────────
+
+  Widget _buildInputWidget() {
+    return AnimatedBuilder(
+      animation: _shakeCtrl,
+      builder: (context, child) {
+        final shakeOffset = _shakeCtrl.isAnimating
+            ? sin(_shakeCtrl.value * pi * 6) * 8 * (1 - _shakeCtrl.value)
+            : 0.0;
+        return Transform.translate(
+          offset: Offset(shakeOffset, 0),
+          child: child,
+        );
+      },
+      child: GestureDetector(
+        onTap: () {
+          if (widget.enabled) widget.focusNode.requestFocus();
+        },
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: _buildCharacterDisplay(),
+            ),
+            Opacity(
+              opacity: 0,
+              child: TextField(
+                controller: widget.controller,
+                focusNode: widget.focusNode,
+                enabled: widget.enabled,
+                enableInteractiveSelection: false,
+                contextMenuBuilder: (_, __) => const SizedBox.shrink(),
+                maxLength: _letterCount,
+                textCapitalization: TextCapitalization.words,
+                inputFormatters: [
+                  _UpperCaseTextFormatter(),
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  LengthLimitingTextInputFormatter(_letterCount),
+                ],
+                decoration: const InputDecoration(
+                  counterText: '',
+                  border: InputBorder.none,
+                ),
+                onSubmitted: (_) => widget.onSubmit(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final showName = widget.alreadyGuessed || widget.revealedName != null;
+    final revealedText = showName
+        ? (widget.revealedName ?? widget.animalName).toUpperCase()
+        : '';
 
     return Column(
       children: [
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 500),
-          switchInCurve: Curves.easeOutBack,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            return FadeTransition(
-              opacity: animation,
-              child: ScaleTransition(scale: animation, child: child),
-            );
-          },
-          child: showName
-              ? Text(
-                  widget.alreadyGuessed
-                      ? (widget.revealedName ?? '').toUpperCase()
-                      : widget.revealedName!.toUpperCase(),
-                  key: const ValueKey('revealed'),
-                  style: GoogleFonts.nunito(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.correctGreen,
-                    letterSpacing: 2,
-                  ),
-                  textAlign: TextAlign.center,
-                )
-              : AnimatedBuilder(
-                  key: ValueKey('input_${widget.questionIndex}'),
-                  animation: _shakeController,
-                  builder: (context, child) {
-                    final shakeOffset = _shakeController.isAnimating
-                        ? sin(_shakeController.value * pi * 6) *
-                              8 *
-                              (1 - _shakeController.value)
-                        : 0.0;
-                    return Transform.translate(
-                      offset: Offset(shakeOffset, 0),
-                      child: child,
-                    );
-                  },
-                  child: GestureDetector(
-                    onTap: () {
-                      if (widget.enabled) {
-                        widget.focusNode.requestFocus();
-                      }
-                    },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          child: _buildCharacterDisplay(),
-                        ),
-                        Opacity(
-                          opacity: 0,
-                          child: TextField(
-                            controller: widget.controller,
-                            focusNode: widget.focusNode,
-                            enabled: widget.enabled,
-                            enableInteractiveSelection: false,
-                            contextMenuBuilder: (_, __) =>
-                                const SizedBox.shrink(),
-                            maxLength: _letterCount,
-                            textCapitalization: TextCapitalization.words,
-                            inputFormatters: [
-                              _UpperCaseTextFormatter(),
-                              FilteringTextInputFormatter.deny(RegExp(r'\s')),
-                              LengthLimitingTextInputFormatter(_letterCount),
-                            ],
-                            decoration: const InputDecoration(
-                              counterText: '',
-                              border: InputBorder.none,
-                            ),
-                            onSubmitted: (_) => widget.onSubmit(),
+        // ── Name / input display ────────────────────────────────────────────
+        //
+        // The Stack always sizes itself to the input widget (the non-positioned
+        // anchor), so the container height is stable throughout the animation.
+        // The revealed name is in Positioned.fill so it never affects sizing.
+        Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            // Anchor: input section. Fades + slides up as name enters.
+            Opacity(
+              opacity: _inputFade.value.clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, _inputSlideY.value),
+                child: _buildInputWidget(),
+              ),
+            ),
+
+            // Revealed name: positioned overlay — no layout contribution.
+            if (_revealCtrl.value > 0)
+              Positioned.fill(
+                child: Center(
+                  child: Opacity(
+                    opacity: _revealFade.value.clamp(0.0, 1.0),
+                    child: Transform.translate(
+                      offset: Offset(0, _revealSlideY.value),
+                      child: Transform.scale(
+                        scale: _revealScale.value,
+                        child: Text(
+                          revealedText,
+                          style: GoogleFonts.nunito(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.correctGreen,
+                            letterSpacing: 2,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
+              ),
+          ],
         ),
-        const SizedBox(height: 24),
+
+        const SizedBox(height: 10),
+
         if (widget.alreadyGuessed) ...[
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

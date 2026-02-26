@@ -18,8 +18,9 @@
   "wrong_answer": "That's not right. Try again!",
   "correct_answer": "That's the right answer! +10 Coins \ud83c\udf89",
   "next": "NEXT \u2192",
-  "quiz_complete": "Quiz Complete!",
+  "level_completed": "Level Completed!",
   "score": "Score",
+  "perfect_score": "Perfect!",
   "coins_earned": "+{} Coins Earned",
   "back_to_level": "BACK TO LEVEL",
   "questions_count": "{} Questions",
@@ -80,11 +81,12 @@
   "tutorial_letter_title": "Reveal a Letter",
   "tutorial_letter_body": "Need more help? Reveal a letter in the name for 30 coins.",
   "tutorial_reveal_title": "Reveal the Animal",
-  "tutorial_reveal_body": "Completely stuck? Tap here to instantly reveal the animal's name for free!",
+  "tutorial_reveal_body": "Completely stuck? Tap here to instantly reveal the animal's name!",
   "tutorial_coins_title": "Your Coins",
   "tutorial_coins_body": "You earn coins for every correct answer. Use them to buy hints and letter reveals!",
   "tutorial_score_title": "Score Points",
   "tutorial_score_body": "Answer without using hints to earn more points. Points determine your rank on the leaderboard!",
   "tutorial_leaderboard_title": "Leaderboard",
-  "tutorial_leaderboard_body": "Compete with other players! The fewer hints you use, the higher you'll rank."
+  "tutorial_leaderboard_body": "Compete with other players! The fewer hints you use, the higher you'll rank.",
+  "you": "you"
 }

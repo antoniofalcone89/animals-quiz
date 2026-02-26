@@ -7,6 +7,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../services/admob_service.dart';
+import '../utils/string_similarity.dart';
 import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animal_emoji_card.dart';
@@ -38,6 +39,7 @@ class QuizScreen extends StatefulWidget {
 class _QuizScreenState extends State<QuizScreen> {
   late int _currentIndex;
   late List<int> _questionOrder;
+  late int _initialLevelCorrect;
   int _sessionCoins = 0;
   int _sessionCorrect = 0;
   bool _answered = false;
@@ -65,6 +67,9 @@ class _QuizScreenState extends State<QuizScreen> {
   void initState() {
     super.initState();
     _questionOrder = List.generate(widget.level.animals.length, (i) => i);
+    _initialLevelCorrect = widget.gameState.getLevelCorrectCount(
+      widget.level.id,
+    );
     // Start from the tapped animal, then continue through the rest
     final startIdx = _questionOrder.indexOf(widget.animalIndex);
     _questionOrder = [
@@ -107,7 +112,10 @@ class _QuizScreenState extends State<QuizScreen> {
         title: 'tutorial_input_title'.tr(),
         body: 'tutorial_input_body'.tr(),
         icon: Icons.keyboard_rounded,
-        spotlightPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        spotlightPadding: const EdgeInsets.symmetric(
+          horizontal: 4,
+          vertical: 6,
+        ),
       ),
       TutorialStep(
         targetKey: _hintButtonKey,
@@ -490,14 +498,10 @@ class _QuizScreenState extends State<QuizScreen> {
     );
     final guess = _insertSpaces(typed, animal.name, revealedPos);
 
-    final result = await widget.gameState.submitAnswer(
-      widget.level.id,
-      _currentAnimalIndex,
-      guess,
-    );
+    // Check correctness locally for instant feedback — no network wait.
+    final isCorrect = isFuzzyMatch(guess, animal.name);
 
-    if (result.correct) {
-      final animal = widget.level.animals[_currentAnimalIndex];
+    if (isCorrect) {
       String? funFact;
       if (animal.funFacts.isNotEmpty) {
         funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
@@ -505,14 +509,24 @@ class _QuizScreenState extends State<QuizScreen> {
       _focusNode.unfocus();
       setState(() {
         _answered = true;
-        _revealedName = result.correctAnswer ?? animal.name;
-        _sessionCoins += result.coinsAwarded;
+        _revealedName = animal.name;
         _sessionCorrect++;
         _currentFunFact = funFact;
       });
+
+      // Persist to backend in the background; update coins when it responds.
+      // On network failure we swallow silently — progress will appear unguessed
+      // on next load, which is acceptable vs. delaying feedback every time.
+      widget.gameState
+          .submitAnswer(widget.level.id, _currentAnimalIndex, guess)
+          .then((result) {
+            if (!mounted) return;
+            setState(() => _sessionCoins += result.coinsAwarded);
+          })
+          .catchError((_) {});
     } else {
       setState(() => _showWrongMessage = true);
-      Future.delayed(const Duration(milliseconds: 800), () {
+      Future.delayed(const Duration(milliseconds: 1400), () {
         if (!mounted) return;
         _controller.clear();
         _focusNode.requestFocus();
@@ -539,8 +553,16 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     if (_showResults) {
+      final persistedCorrect = widget.gameState.getLevelCorrectCount(
+        widget.level.id,
+      );
+      final displayedCorrect = max(
+        persistedCorrect,
+        _initialLevelCorrect + _sessionCorrect,
+      ).clamp(0, _questionOrder.length);
+
       return QuizResults(
-        correctCount: _sessionCorrect,
+        correctCount: displayedCorrect,
         totalQuestions: _questionOrder.length,
         coinsEarned: _sessionCoins,
         onBackToLevel: () => Navigator.of(context).pop(),
@@ -565,7 +587,16 @@ class _QuizScreenState extends State<QuizScreen> {
     final int? nextHintCost = hintsRevealed < animal.hints.length
         ? GameState.hintCosts[hintsRevealed]
         : null;
-    final progress = (_currentIndex + 1) / _questionOrder.length;
+    final persistedCorrect = widget.gameState.getLevelCorrectCount(
+      widget.level.id,
+    );
+    final completionCorrect = max(
+      persistedCorrect,
+      _initialLevelCorrect + _sessionCorrect,
+    ).clamp(0, _questionOrder.length);
+    final completionProgress = _questionOrder.isEmpty
+        ? 0.0
+        : completionCorrect / _questionOrder.length;
 
     final scaffold = Scaffold(
       resizeToAvoidBottomInset: false,
@@ -592,28 +623,27 @@ class _QuizScreenState extends State<QuizScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: CoinBadge(key: _coinBadgeKey, coins: widget.gameState.totalCoins, light: true),
+            child: CoinBadge(
+              key: _coinBadgeKey,
+              coins: widget.gameState.totalCoins,
+              light: true,
+            ),
           ),
         ],
       ),
       body: Column(
         children: [
-          // Progress bar
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-            minHeight: 4,
-          ),
+          // Progress bar (level completion)
+          _LevelProgressBar(progress: completionProgress),
 
-          // Image zone — fills purple background
+          // Image zone — Expanded, fills remaining space above the panel.
+          // The panel uses mainAxisSize.min so it only takes what it needs,
+          // leaving the image zone as large as possible at all times.
           Expanded(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                if (_focusNode.hasFocus) {
-                  _focusNode.unfocus();
-                }
+                if (_focusNode.hasFocus) _focusNode.unfocus();
               },
               child: Center(
                 child: Padding(
@@ -636,224 +666,221 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
 
-          // Bottom panel — white sheet pinned above keyboard
+          // Bottom panel — wraps content tightly (no excess white space).
+          // AnimatedSize on the inner content means every height change
+          // (hints appearing, feedback, keyboard inset) animates smoothly
+          // instead of jumping abruptly.
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.13),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                ),
+                BoxShadow(
+                  color: AppColors.deepPurple.withValues(alpha: 0.10),
+                  blurRadius: 40,
+                  offset: const Offset(0, -10),
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Drag handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 10, bottom: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // "View hints" chip when keyboard is visible and hints are bought
-                      if (hintsRevealed > 0 &&
-                          !_answered &&
-                          !alreadyGuessed &&
-                          keyboardVisible)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: GestureDetector(
-                            onTap: () =>
-                                _showHintsSheet(animal.hints, hintsRevealed),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.deepPurple.withValues(
-                                  alpha: 0.07,
+                // All panel content wrapped in AnimatedSize so panel height
+                // changes are smooth regardless of what triggers them.
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // "View hints" chip — keyboard visible + hints bought
+                        if (hintsRevealed > 0 &&
+                            !_answered &&
+                            !alreadyGuessed &&
+                            keyboardVisible)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: GestureDetector(
+                              onTap: () =>
+                                  _showHintsSheet(animal.hints, hintsRevealed),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 7,
                                 ),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
+                                decoration: BoxDecoration(
                                   color: AppColors.deepPurple.withValues(
-                                    alpha: 0.2,
+                                    alpha: 0.07,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: AppColors.deepPurple.withValues(
+                                      alpha: 0.2,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.lightbulb_outline,
-                                    size: 15,
-                                    color: AppColors.deepPurple,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'hints'.tr(),
-                                    style: GoogleFonts.nunito(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.lightbulb_outline,
+                                      size: 15,
                                       color: AppColors.deepPurple,
                                     ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    width: 18,
-                                    height: 18,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.deepPurple,
-                                      shape: BoxShape.circle,
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'hints'.tr(),
+                                      style: GoogleFonts.nunito(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.deepPurple,
+                                      ),
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        '$hintsRevealed',
-                                        style: GoogleFonts.nunito(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white,
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      width: 18,
+                                      height: 18,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.deepPurple,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$hintsRevealed',
+                                          style: GoogleFonts.nunito(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 15,
-                                    color: AppColors.deepPurple,
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 15,
+                                      color: AppColors.deepPurple,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
 
-                      // Inline revealed hints — only when keyboard is hidden and sheet is not open
-                      if (hintsRevealed > 0 &&
-                          !_answered &&
-                          !alreadyGuessed &&
-                          !keyboardVisible &&
-                          !_hintsSheetOpen)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: RevealedHints(
-                            hints: animal.hints,
-                            hintsRevealed: hintsRevealed,
+                        // Inline hints — keyboard hidden, sheet closed
+                        if (hintsRevealed > 0 &&
+                            !_answered &&
+                            !alreadyGuessed &&
+                            !keyboardVisible &&
+                            !_hintsSheetOpen)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: RevealedHints(
+                              hints: animal.hints,
+                              hintsRevealed: hintsRevealed,
+                            ),
                           ),
+
+                        // Input section
+                        QuizInputSection(
+                          key: _inputSectionKey,
+                          animalName: animal.name,
+                          revealedName: alreadyGuessed
+                              ? animal.name
+                              : _revealedName,
+                          alreadyGuessed: alreadyGuessed,
+                          controller: _controller,
+                          focusNode: _focusNode,
+                          enabled:
+                              !_answered &&
+                              !alreadyGuessed &&
+                              !_showWrongMessage,
+                          questionIndex: _currentIndex,
+                          showError: _showWrongMessage,
+                          onSubmit: _onSubmit,
+                          revealedPositions: revealedPositions,
                         ),
 
-                      // Input
-                      QuizInputSection(
-                        key: _inputSectionKey,
-                        animalName: animal.name,
-                        revealedName: alreadyGuessed
-                            ? animal.name
-                            : _revealedName,
-                        alreadyGuessed: alreadyGuessed,
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        enabled:
-                            !_answered && !alreadyGuessed && !_showWrongMessage,
-                        questionIndex: _currentIndex,
-                        showError: _showWrongMessage,
-                        onSubmit: _onSubmit,
-                        revealedPositions: revealedPositions,
-                      ),
+                        const SizedBox(height: 12),
 
-                      const SizedBox(height: 12),
-
-                      // Hint buttons row — visible above keyboard
-                      if (!alreadyGuessed && !_answered)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (animal.hints.isNotEmpty)
-                                HintButton(
-                                  key: _hintButtonKey,
-                                  hintsRevealed: hintsRevealed,
-                                  totalHints: animal.hints.length,
-                                  nextHintCost: nextHintCost,
+                        // Hint buttons — no nested AnimatedSize; the outer
+                        // AnimatedSize handles the height transition when
+                        // _answered flips, avoiding multi-step resizing.
+                        if (!alreadyGuessed && !_answered)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                if (animal.hints.isNotEmpty)
+                                  HintButton(
+                                    key: _hintButtonKey,
+                                    hintsRevealed: hintsRevealed,
+                                    totalHints: animal.hints.length,
+                                    nextHintCost: nextHintCost,
+                                    canAfford:
+                                        nextHintCost != null &&
+                                        widget.gameState.totalCoins >=
+                                            nextHintCost,
+                                    onRequestHint: _useHint,
+                                    enabled: !_answered && !alreadyGuessed,
+                                  ),
+                                LetterRevealButton(
+                                  key: _letterRevealKey,
+                                  lettersRevealed: lettersRevealed,
+                                  maxReveals: GameState.maxLetterReveals,
+                                  cost: GameState.letterRevealCost,
                                   canAfford:
-                                      nextHintCost != null &&
                                       widget.gameState.totalCoins >=
-                                          nextHintCost,
-                                  onRequestHint: _useHint,
+                                      GameState.letterRevealCost,
+                                  onReveal: _useLetterReveal,
                                   enabled: !_answered && !alreadyGuessed,
                                 ),
-                              LetterRevealButton(
-                                key: _letterRevealKey,
-                                lettersRevealed: lettersRevealed,
-                                maxReveals: GameState.maxLetterReveals,
-                                cost: GameState.letterRevealCost,
-                                canAfford:
-                                    widget.gameState.totalCoins >=
-                                    GameState.letterRevealCost,
-                                onReveal: _useLetterReveal,
-                                enabled: !_answered && !alreadyGuessed,
-                              ),
-                              RevealAnimalButton(
-                                key: _revealAnimalKey,
-                                onReveal: _showRevealAdDialog,
-                                enabled: !_answered && !alreadyGuessed,
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // Correct / wrong feedback
-                      if (!alreadyGuessed)
-                        QuizFeedback(
-                          showWrongMessage: _showWrongMessage,
-                          answered: _answered,
-                          onNext: _next,
-                          funFact: _currentFunFact,
-                        ),
-
-                      // Already guessed — next button
-                      if (alreadyGuessed) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _next,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.deepPurple,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                            child: Text(
-                              'next'.tr(),
-                              style: GoogleFonts.nunito(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
+                                RevealAnimalButton(
+                                  key: _revealAnimalKey,
+                                  onReveal: _showRevealAdDialog,
+                                  enabled: !_answered && !alreadyGuessed,
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+
+                        // Feedback (correct / wrong)
+                        if (!alreadyGuessed)
+                          QuizFeedback(
+                            showWrongMessage: _showWrongMessage,
+                            answered: _answered,
+                            onNext: _next,
+                            funFact: _currentFunFact,
+                          ),
+
+                        // Already guessed — icon-only next button
+                        if (alreadyGuessed) ...[
+                          const SizedBox(height: 16),
+                          _NextIconButton(onTap: _next),
+                          const SizedBox(height: 8),
+                        ],
                       ],
-
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
-                        height: max(effectiveBottomInset, safeBottom) + 12,
-                      ),
-                    ],
+                    ),
                   ),
+                ),
+
+                // Keyboard inset — animates smoothly as keyboard appears/hides
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  height: max(effectiveBottomInset, safeBottom) + 12,
                 ),
               ],
             ),
@@ -872,6 +899,356 @@ class _QuizScreenState extends State<QuizScreen> {
           onComplete: _onTutorialComplete,
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Level progress bar with two animation layers:
+//   _tickCtrl  — fires on every correct answer; intensity scales with progress
+//   _celebCtrl — one-shot celebration when progress first reaches 1.0
+// ---------------------------------------------------------------------------
+
+class _LevelProgressBar extends StatefulWidget {
+  final double progress;
+  const _LevelProgressBar({required this.progress});
+
+  @override
+  State<_LevelProgressBar> createState() => _LevelProgressBarState();
+}
+
+class _LevelProgressBarState extends State<_LevelProgressBar>
+    with TickerProviderStateMixin {
+  // ── Per-step tick (replays on every progress increase) ──────────────────
+  late final AnimationController _tickCtrl;
+
+  // ── One-shot completion celebration ─────────────────────────────────────
+  late final AnimationController _celebCtrl;
+  late final Animation<double> _celebGlowIn;
+  late final Animation<double> _celebShimmer;
+  late final Animation<double> _celebPulse;
+  late final Animation<double> _celebGlowOut;
+
+  bool _celebFired = false;
+  double _prevProgress = 0.0;
+
+  // Intensity 0→1 that scales tick effects based on current progress:
+  //   0–40 % → small flash, 40–70 % → medium, 70–99 % → big + mini-shimmer
+  double get _intensity => widget.progress.clamp(0.0, 0.99);
+
+  // Bell-curve envelope for the tick (peaks at t=0.5)
+  double get _tickEnvelope => sin(_tickCtrl.value * pi);
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Tick: short, replays each correct answer
+    _tickCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    )..addListener(() => setState(() {}));
+
+    // Celebration: longer, fires once at completion
+    _celebCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..addListener(() => setState(() {}));
+
+    _celebGlowIn = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.0, 0.30, curve: Curves.easeOut),
+    );
+    _celebShimmer = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.15, 0.70, curve: Curves.easeInOut),
+    );
+    _celebPulse = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _celebCtrl,
+        curve: const Interval(0.45, 0.80, curve: Curves.easeInOut),
+      ),
+    );
+    _celebGlowOut = CurvedAnimation(
+      parent: _celebCtrl,
+      curve: const Interval(0.75, 1.0, curve: Curves.easeIn),
+    );
+
+    _prevProgress = widget.progress;
+    if (widget.progress >= 1.0) {
+      _celebFired = true; // restored session — static glow only
+    }
+  }
+
+  @override
+  void didUpdateWidget(_LevelProgressBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final prev = _prevProgress;
+    final next = widget.progress;
+    _prevProgress = next;
+
+    if (next <= prev) return; // no increase, nothing to do
+
+    if (!_celebFired && next >= 1.0) {
+      // Completion: cancel any running tick, fire celebration
+      _celebFired = true;
+      _tickCtrl.stop();
+      _celebCtrl.forward(from: 0);
+    } else if (next < 1.0) {
+      // Mid-level correct answer: replay tick animation
+      _tickCtrl.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tickCtrl.dispose();
+    _celebCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Height ───────────────────────────────────────────────────────────────
+
+  double get _barHeight {
+    if (_celebCtrl.isAnimating) {
+      // Celebration pulse: 4 → 8 → 4
+      final t = _celebPulse.value;
+      final wave = t <= 0.5 ? t * 2 : (1.0 - t) * 2;
+      return 4.0 + wave * 4.0;
+    }
+    if (_tickCtrl.isAnimating) {
+      // Tick pulse: grows more as player nears the end (4→5 early, 4→7 late)
+      final maxBump = 1.0 + _intensity * 3.0; // 1 px early → 4 px late
+      return 4.0 + _tickEnvelope * maxBump;
+    }
+    return 4.0;
+  }
+
+  // ── Glow ─────────────────────────────────────────────────────────────────
+
+  double get _glowAlpha {
+    final isComplete = widget.progress >= 1.0;
+
+    if (_celebCtrl.isAnimating) {
+      final steadyGlow = isComplete ? 0.45 : 0.0;
+      final burst = _celebGlowIn.value * (1.0 - _celebGlowOut.value) * 0.55;
+      return (steadyGlow + burst).clamp(0.0, 1.0);
+    }
+    if (_tickCtrl.isAnimating) {
+      // Tick flash: brighter near the end (0.15 early → 0.45 late)
+      return _tickEnvelope * (0.15 + _intensity * 0.30);
+    }
+    return isComplete ? 0.45 : 0.0;
+  }
+
+  double get _glowBlur {
+    if (_celebCtrl.isAnimating) return 12 + _celebGlowIn.value * 8;
+    if (_tickCtrl.isAnimating) return 6 + _intensity * 6;
+    return widget.progress >= 1.0 ? 12.0 : 0.0;
+  }
+
+  // ── Shimmer (celebration sweep) ──────────────────────────────────────────
+
+  double get _celebShimmerX => -0.6 + _celebShimmer.value * 2.2;
+
+  // ── Mini-shimmer for late-game ticks (progress > 60%) ───────────────────
+  // Stays at the tip of the filled bar and flares outward briefly.
+  double get _tickShimmerOpacity {
+    if (!_tickCtrl.isAnimating || _intensity < 0.60) return 0.0;
+    final extraIntensity = (_intensity - 0.60) / 0.39; // 0→1 over 60–99%
+    return _tickEnvelope * extraIntensity * 0.7;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isComplete = widget.progress >= 1.0;
+    final anyAnimating =
+        _celebCtrl.isAnimating || _tickCtrl.isAnimating || isComplete;
+
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: anyAnimating
+            ? [
+                BoxShadow(
+                  color: Colors.white.withValues(alpha: _glowAlpha),
+                  blurRadius: _glowBlur,
+                  spreadRadius: _celebCtrl.isAnimating
+                      ? _celebGlowIn.value * 2
+                      : 0,
+                ),
+              ]
+            : const [],
+      ),
+      child: Stack(
+        children: [
+          // Base progress bar
+          LinearProgressIndicator(
+            value: widget.progress,
+            backgroundColor: Colors.white.withValues(alpha: 0.15),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            minHeight: _barHeight,
+          ),
+
+          // Celebration shimmer sweep
+          if (_celebCtrl.isAnimating && _celebShimmer.value > 0)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final fadeOut =
+                      1.0 -
+                      (_celebShimmer.value - 0.85).clamp(0.0, 0.15) / 0.15;
+                  return ClipRect(
+                    child: CustomPaint(
+                      painter: _ShimmerPainter(
+                        centerX: _celebShimmerX * w,
+                        stripeWidth: w * 0.25,
+                        opacity: _celebShimmer.value * fadeOut,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+          // Late-game tick: flare at the leading edge of the filled bar
+          if (_tickShimmerOpacity > 0)
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  // Centre the flare at the current fill position
+                  final cx = widget.progress * w;
+                  return ClipRect(
+                    child: CustomPaint(
+                      painter: _ShimmerPainter(
+                        centerX: cx,
+                        stripeWidth: w * 0.12,
+                        opacity: _tickShimmerOpacity,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Paints a translucent white Gaussian-like stripe for the shimmer effect.
+class _ShimmerPainter extends CustomPainter {
+  final double centerX;
+  final double stripeWidth;
+  final double opacity;
+
+  const _ShimmerPainter({
+    required this.centerX,
+    required this.stripeWidth,
+    required this.opacity,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final gradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [
+        Colors.white.withValues(alpha: 0.0),
+        Colors.white.withValues(alpha: opacity * 0.6),
+        Colors.white.withValues(alpha: opacity * 0.9),
+        Colors.white.withValues(alpha: opacity * 0.6),
+        Colors.white.withValues(alpha: 0.0),
+      ],
+      stops: [
+        ((centerX - stripeWidth) / size.width).clamp(0.0, 1.0),
+        ((centerX - stripeWidth * 0.4) / size.width).clamp(0.0, 1.0),
+        (centerX / size.width).clamp(0.0, 1.0),
+        ((centerX + stripeWidth * 0.4) / size.width).clamp(0.0, 1.0),
+        ((centerX + stripeWidth) / size.width).clamp(0.0, 1.0),
+      ],
+    );
+    canvas.drawRect(rect, Paint()..shader = gradient.createShader(rect));
+  }
+
+  @override
+  bool shouldRepaint(_ShimmerPainter old) =>
+      old.centerX != centerX ||
+      old.stripeWidth != stripeWidth ||
+      old.opacity != opacity;
+}
+
+/// Icon-only circular next button with a bounce-in entrance animation.
+class _NextIconButton extends StatefulWidget {
+  final VoidCallback onTap;
+  const _NextIconButton({required this.onTap});
+
+  @override
+  State<_NextIconButton> createState() => _NextIconButtonState();
+}
+
+class _NextIconButtonState extends State<_NextIconButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _scale = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
+    _opacity = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: ScaleTransition(
+        scale: _scale,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.deepPurple,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.deepPurple.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.arrow_forward_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -112,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const LeaderboardView()
             : ProfileView(
                 username: widget.gameState.username,
+                photoUrl: widget.gameState.photoUrl,
                 totalCoins: widget.gameState.totalCoins,
                 totalPoints: widget.gameState.totalPoints,
                 isStatsLoading: widget.gameState.isStatsLoading,
