@@ -679,17 +679,6 @@ class _QuizScreenState extends State<QuizScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Drag handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(top: 10, bottom: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
                 // All panel content wrapped in AnimatedSize so panel height
                 // changes are smooth regardless of what triggers them.
                 AnimatedSize(
@@ -1093,7 +1082,8 @@ class _LevelProgressBarState extends State<_LevelProgressBar>
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final w = constraints.maxWidth;
-                  final fadeOut = 1.0 -
+                  final fadeOut =
+                      1.0 -
                       (_celebShimmer.value - 0.85).clamp(0.0, 0.15) / 0.15;
                   return ClipRect(
                     child: CustomPaint(
