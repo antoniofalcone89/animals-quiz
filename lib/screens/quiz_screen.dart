@@ -672,9 +672,22 @@ class _QuizScreenState extends State<QuizScreen> {
           // instead of jumping abruptly.
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.13),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                ),
+                BoxShadow(
+                  color: AppColors.deepPurple.withValues(alpha: 0.10),
+                  blurRadius: 40,
+                  offset: const Offset(0, -10),
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -685,7 +698,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

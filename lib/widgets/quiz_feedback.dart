@@ -50,30 +50,26 @@ class _QuizFeedbackState extends State<QuizFeedback>
       parent: _controller,
       curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
     );
-    _correctBannerSlide = Tween<Offset>(
-      begin: const Offset(0, 0.4),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
-      ),
-    );
+    _correctBannerSlide =
+        Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+          ),
+        );
 
     // Fun fact: 30–75%
     _funFactFade = CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.3, 0.75, curve: Curves.easeOut),
     );
-    _funFactSlide = Tween<Offset>(
-      begin: const Offset(0, 0.4),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.3, 0.75, curve: Curves.easeOutCubic),
-      ),
-    );
+    _funFactSlide = Tween<Offset>(begin: const Offset(0, 0.4), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.3, 0.75, curve: Curves.easeOutCubic),
+          ),
+        );
 
     // Next button: 55–100% with bounce
     _buttonFade = CurvedAnimation(
@@ -180,8 +176,18 @@ class _QuizFeedbackState extends State<QuizFeedback>
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.correctGreen.withValues(alpha: 0.1),
+                  color: AppColors.correctGreen.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
+                  border: const Border(
+                    left: BorderSide(color: AppColors.correctGreen, width: 3),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.correctGreen.withValues(alpha: 0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -218,19 +224,23 @@ class _QuizFeedbackState extends State<QuizFeedback>
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.amber.withValues(alpha: 0.12),
+                    color: Colors.amber.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: Colors.amber.withValues(alpha: 0.3),
+                      color: Colors.amber.withValues(alpha: 0.35),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withValues(alpha: 0.33),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '\u{1F4D6}',
-                        style: TextStyle(fontSize: 20),
-                      ),
+                      Icon(Icons.auto_awesome, color: Colors.amber[700], size: 22),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
