@@ -87,5 +87,6 @@
   "tutorial_score_title": "Score Points",
   "tutorial_score_body": "Answer without using hints to earn more points. Points determine your rank on the leaderboard!",
   "tutorial_leaderboard_title": "Leaderboard",
-  "tutorial_leaderboard_body": "Compete with other players! The fewer hints you use, the higher you'll rank."
+  "tutorial_leaderboard_body": "Compete with other players! The fewer hints you use, the higher you'll rank.",
+  "you": "you"
 }
