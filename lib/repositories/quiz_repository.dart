@@ -2,6 +2,7 @@ import '../models/answer_result.dart';
 import '../models/buy_hint_result.dart';
 import '../models/level.dart';
 import '../models/reveal_letter_result.dart';
+import '../models/user.dart';
 
 abstract class QuizRepository {
   Future<List<Level>> getLevels();
@@ -25,6 +26,8 @@ abstract class QuizRepository {
 
   Future<int> getUserPoints();
 
+  Future<User?> getCurrentUserStats();
+
   Future<BuyHintResult> buyHint({
     required int levelId,
     required int animalIndex,
@@ -34,4 +37,8 @@ abstract class QuizRepository {
     required int levelId,
     required int animalIndex,
   });
+
+  /// Dev-only hook for local testing.
+  /// Default no-op for production repositories.
+  void resetStreakDateForDebug() {}
 }

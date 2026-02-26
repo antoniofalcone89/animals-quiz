@@ -101,6 +101,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _handleDebugForceStreakBonus() {
+    widget.gameState.debugForceStreakBonus();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -115,12 +120,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 photoUrl: widget.gameState.photoUrl,
                 totalCoins: widget.gameState.totalCoins,
                 totalPoints: widget.gameState.totalPoints,
+                currentStreak: widget.gameState.currentStreak,
                 isStatsLoading: widget.gameState.isStatsLoading,
                 isGuest: ServiceLocator.instance.authRepository.isAnonymous,
                 onLogout: _handleLogout,
                 onLocaleChanged: _handleLocaleChanged,
                 onLinkWithGoogle: _handleLinkWithGoogle,
                 onLinkWithEmail: _handleLinkWithEmail,
+                onDebugForceStreakBonus: _handleDebugForceStreakBonus,
               ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -148,29 +155,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHome() {
-    const headerHeight = HomeHeader.height;
-
     if (widget.gameState.isLoading) {
-      return Stack(
+      return Column(
         children: [
-          const Positioned.fill(
-            top: headerHeight,
-            child: ClipRect(child: LevelGridSkeleton()),
+          HomeHeader(
+            username: widget.gameState.username,
+            totalCoins: widget.gameState.totalCoins,
+            totalPoints: widget.gameState.totalPoints,
+            currentStreak: widget.gameState.currentStreak,
+            isStatsLoading: true,
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: ColoredBox(
-              color: AppColors.lightGrey,
-              child: HomeHeader(
-                username: widget.gameState.username,
-                totalCoins: widget.gameState.totalCoins,
-                totalPoints: widget.gameState.totalPoints,
-                isStatsLoading: true,
-              ),
-            ),
-          ),
+          const Expanded(child: ClipRect(child: LevelGridSkeleton())),
         ],
       );
     }
@@ -200,10 +195,51 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Stack(
+    return Column(
       children: [
-        Positioned.fill(
-          top: headerHeight,
+        HomeHeader(
+          username: widget.gameState.username,
+          totalCoins: widget.gameState.totalCoins,
+          totalPoints: widget.gameState.totalPoints,
+          currentStreak: widget.gameState.currentStreak,
+          isStatsLoading: widget.gameState.isStatsLoading,
+        ),
+        if (widget.gameState.isStreakBroken)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: Colors.orange.withValues(alpha: 0.26),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Colors.orange,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'streak_broken'.tr(),
+                      style: GoogleFonts.nunito(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(
           child: ClipRect(
             child: LevelGrid(
               gameState: widget.gameState,
@@ -218,20 +254,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
                 setState(() {});
               },
-            ),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          child: ColoredBox(
-            color: AppColors.lightGrey,
-            child: HomeHeader(
-              username: widget.gameState.username,
-              totalCoins: widget.gameState.totalCoins,
-              totalPoints: widget.gameState.totalPoints,
-              isStatsLoading: widget.gameState.isStatsLoading,
             ),
           ),
         ),

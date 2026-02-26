@@ -2,6 +2,7 @@ import '../../models/answer_result.dart';
 import '../../models/buy_hint_result.dart';
 import '../../models/level.dart';
 import '../../models/reveal_letter_result.dart';
+import '../../models/user.dart';
 import '../../services/api_client.dart';
 import '../quiz_repository.dart';
 
@@ -9,6 +10,9 @@ class ApiQuizRepository implements QuizRepository {
   final ApiClient _client;
 
   ApiQuizRepository(this._client);
+
+  @override
+  void resetStreakDateForDebug() {}
 
   @override
   Future<List<Level>> getLevels() async {
@@ -80,6 +84,13 @@ class ApiQuizRepository implements QuizRepository {
   Future<int> getUserPoints() async {
     final json = await _client.get('/auth/me');
     return json['totalPoints'] as int? ?? json['score'] as int? ?? 0;
+  }
+
+  @override
+  Future<User?> getCurrentUserStats() async {
+    final json = await _client.getOrNull('/auth/me');
+    if (json == null) return null;
+    return User.fromJson(json);
   }
 
   @override

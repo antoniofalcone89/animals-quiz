@@ -67,6 +67,10 @@
   "ad_not_available": "Ad is not available right now.",
   "ad_reward_not_earned": "Watch the full ad to reveal the animal.",
   "total_points": "Total Points",
+  "streak": "Streak",
+  "streak_days": "{} days",
+  "streak_broken": "Your streak has been broken. Play today to start a new one!",
+  "streak_new": "NEW",
   "points_abbr": "pts",
   "tutorial_skip": "Skip",
   "tutorial_next": "Next",
@@ -88,5 +92,12 @@
   "tutorial_score_body": "Answer without using hints to earn more points. Points determine your rank on the leaderboard!",
   "tutorial_leaderboard_title": "Leaderboard",
   "tutorial_leaderboard_body": "Compete with other players! The fewer hints you use, the higher you'll rank.",
-  "you": "you"
+  "you": "you",
+  "info_coins_title": "Coins",
+  "info_coins_body": "You earn 10 coins for every correct answer. Use them to buy hints and reveal letters when you're stuck!",
+  "info_points_title": "Points",
+  "info_points_body": "Points reflect how well you play. Answer without using hints to earn more points — your rank on the leaderboard depends on them!",
+  "info_streak_title": "Daily Streak",
+  "info_streak_body": "Come back every day to keep your streak alive! Answer at least one question daily to maintain it. The longer your streak, the more you earn!",
+  "streak_bonus_coins": "+{} bonus coins for your streak! 🔥"
 }

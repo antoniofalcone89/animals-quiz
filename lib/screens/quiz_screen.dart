@@ -53,6 +53,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isLoadingRewardedAd = false;
   bool _isShowingRewardedAd = false;
   bool _showTutorial = false;
+  int _streakBonusCoins = 0;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -522,6 +523,9 @@ class _QuizScreenState extends State<QuizScreen> {
           .then((result) {
             if (!mounted) return;
             setState(() => _sessionCoins += result.coinsAwarded);
+            if (result.streakBonusCoins > 0) {
+              _showStreakBonus(result.streakBonusCoins);
+            }
           })
           .catchError((_) {});
     } else {
@@ -533,6 +537,13 @@ class _QuizScreenState extends State<QuizScreen> {
         setState(() => _showWrongMessage = false);
       });
     }
+  }
+
+  void _showStreakBonus(int bonus) {
+    setState(() => _streakBonusCoins = bonus);
+    Future.delayed(const Duration(milliseconds: 4050), () {
+      if (mounted) setState(() => _streakBonusCoins = 0);
+    });
   }
 
   void _next() {
@@ -812,6 +823,13 @@ class _QuizScreenState extends State<QuizScreen> {
 
                         const SizedBox(height: 12),
 
+                        // Streak bonus toast — inline, right under revealed name
+                        if (_answered && _streakBonusCoins > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _StreakBonusToast(coins: _streakBonusCoins),
+                          ),
+
                         // Hint buttons — no nested AnimatedSize; the outer
                         // AnimatedSize handles the height transition when
                         // _answered flips, avoiding multi-step resizing.
@@ -899,6 +917,120 @@ class _QuizScreenState extends State<QuizScreen> {
           onComplete: _onTutorialComplete,
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Streak bonus toast — fades + slides in, holds, then fades out
+// ---------------------------------------------------------------------------
+
+class _StreakBonusToast extends StatefulWidget {
+  final int coins;
+  const _StreakBonusToast({required this.coins});
+
+  @override
+  State<_StreakBonusToast> createState() => _StreakBonusToastState();
+}
+
+class _StreakBonusToastState extends State<_StreakBonusToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timeline: 0–250ms fade+slide in, 250–3750ms hold, 3750–4050ms fade out
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4050),
+    )..forward();
+
+    _opacity = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0).chain(
+          CurveTween(curve: Curves.easeOut),
+        ),
+        weight: 250,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 3500),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0).chain(
+          CurveTween(curve: Curves.easeIn),
+        ),
+        weight: 300,
+      ),
+    ]).animate(_ctrl);
+
+    _slide = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: const Offset(0, 0.3),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 250,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween(Offset.zero),
+        weight: 3800,
+      ),
+    ]).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) => FadeTransition(
+        opacity: _opacity,
+        child: SlideTransition(
+          position: _slide,
+          child: child,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade700,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.local_fire_department_rounded,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                'streak_bonus_coins'.tr(
+                  args: [widget.coins.toString()],
+                ),
+                style: GoogleFonts.nunito(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

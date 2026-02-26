@@ -57,6 +57,8 @@ class GameState extends ChangeNotifier {
   String? _photoUrl;
   int _totalCoins = 0;
   int _totalPoints = 0;
+  int _currentStreak = 0;
+  DateTime? _lastActivityDate;
   final Map<int, List<bool>> _levelProgress = {};
   final Map<int, List<int>> _hintsProgress = {};
   final Map<int, List<int>> _lettersProgress = {};
@@ -64,6 +66,7 @@ class GameState extends ChangeNotifier {
   bool _isLoading = false;
   bool _isStatsLoading = true;
   String? _error;
+  bool _debugForceStreakBonus = false;
 
   GameState({required QuizRepository quizRepository})
     : _quizRepository = quizRepository;
@@ -72,6 +75,21 @@ class GameState extends ChangeNotifier {
   String? get photoUrl => _photoUrl;
   int get totalCoins => _totalCoins;
   int get totalPoints => _totalPoints;
+  int get currentStreak => _currentStreak;
+  DateTime? get lastActivityDate => _lastActivityDate;
+  int? get daysSinceLastActivity {
+    if (_lastActivityDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final last = DateTime(
+      _lastActivityDate!.year,
+      _lastActivityDate!.month,
+      _lastActivityDate!.day,
+    );
+    return today.difference(last).inDays;
+  }
+
+  bool get isStreakBroken => (daysSinceLastActivity ?? 0) >= 2;
   Map<int, List<bool>> get levelProgress => _levelProgress;
   Map<int, List<int>> get hintsProgress => _hintsProgress;
   List<Level> get levels => _levels;
@@ -99,9 +117,16 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setInitialStats({required int coins, required int points}) {
+  void setInitialStats({
+    required int coins,
+    required int points,
+    int streak = 0,
+    DateTime? lastActivityDate,
+  }) {
     _totalCoins = coins;
     _totalPoints = points;
+    _currentStreak = streak;
+    _lastActivityDate = lastActivityDate;
     _isStatsLoading = false;
     notifyListeners();
   }
@@ -148,7 +173,14 @@ class GameState extends ChangeNotifier {
       final letters = await _quizRepository.getLettersProgress();
       _lettersProgress.addAll(letters);
       _totalCoins = await _quizRepository.getUserCoins();
-      _totalPoints = await _quizRepository.getUserPoints();
+      final userStats = await _quizRepository.getCurrentUserStats();
+      if (userStats != null) {
+        _totalPoints = userStats.totalPoints;
+        _currentStreak = userStats.currentStreak;
+        _lastActivityDate = userStats.lastActivityDate;
+      } else {
+        _totalPoints = await _quizRepository.getUserPoints();
+      }
       _isStatsLoading = false;
       notifyListeners();
     } catch (e) {
@@ -158,25 +190,73 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  /// Dev-only: next correct answer will show the streak bonus toast.
+  void debugForceStreakBonus() {
+    _debugForceStreakBonus = true;
+    _quizRepository.resetStreakDateForDebug();
+    _lastActivityDate = null;
+    notifyListeners();
+  }
+
   Future<AnswerResult> submitAnswer(
     int levelId,
     int animalIndex,
     String answer, {
     bool adRevealed = false,
   }) async {
-    final result = await _quizRepository.submitAnswer(
+    var result = await _quizRepository.submitAnswer(
       levelId: levelId,
       animalIndex: animalIndex,
       answer: answer,
       adRevealed: adRevealed,
     );
 
+    if (result.correct && _debugForceStreakBonus) {
+      _debugForceStreakBonus = false;
+      final bonus = (_currentStreak * 2).clamp(2, 20);
+      result = AnswerResult(
+        correct: result.correct,
+        coinsAwarded: result.coinsAwarded,
+        totalCoins: result.totalCoins,
+        pointsAwarded: result.pointsAwarded,
+        correctAnswer: result.correctAnswer,
+        currentStreak: result.currentStreak,
+        lastActivityDate: result.lastActivityDate,
+        streakBonusCoins: bonus,
+      );
+    }
+
     if (result.correct) {
+      final previousStreak = _currentStreak;
       _totalCoins = result.totalCoins;
       _totalPoints += result.pointsAwarded;
       if (_levelProgress.containsKey(levelId)) {
         _levelProgress[levelId]![animalIndex] = true;
       }
+
+      if (result.currentStreak != null) {
+        _currentStreak = result.currentStreak!;
+      }
+      if (result.lastActivityDate != null) {
+        _lastActivityDate = result.lastActivityDate;
+      }
+
+      if (result.currentStreak == null || result.lastActivityDate == null) {
+        try {
+          final userStats = await _quizRepository.getCurrentUserStats();
+          if (userStats != null) {
+            _totalPoints = userStats.totalPoints;
+            _currentStreak = userStats.currentStreak;
+            _lastActivityDate = userStats.lastActivityDate;
+          }
+        } catch (_) {}
+      }
+
+      if (_currentStreak > previousStreak && _lastActivityDate == null) {
+        final now = DateTime.now();
+        _lastActivityDate = DateTime(now.year, now.month, now.day);
+      }
+
       notifyListeners();
     }
 
