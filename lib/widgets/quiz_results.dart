@@ -9,6 +9,8 @@ class QuizResults extends StatelessWidget {
   final int totalQuestions;
   final int coinsEarned;
   final VoidCallback onBackToLevel;
+  final String completionTitleKey;
+  final String backButtonLabelKey;
 
   const QuizResults({
     super.key,
@@ -16,6 +18,8 @@ class QuizResults extends StatelessWidget {
     required this.totalQuestions,
     required this.coinsEarned,
     required this.onBackToLevel,
+    this.completionTitleKey = 'level_completed',
+    this.backButtonLabelKey = 'back_to_level',
   });
 
   @override
@@ -33,7 +37,7 @@ class QuizResults extends StatelessWidget {
               const Text('\u{1F389}', style: TextStyle(fontSize: 64)),
               const SizedBox(height: 24),
               Text(
-                'level_completed'.tr(),
+                completionTitleKey.tr(),
                 style: GoogleFonts.nunito(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
@@ -123,7 +127,7 @@ class QuizResults extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Text(
-                      'back_to_level'.tr(),
+                      backButtonLabelKey.tr(),
                       style: GoogleFonts.nunito(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,

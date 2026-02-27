@@ -32,6 +32,8 @@ class MockAuthRepository implements AuthRepository {
       email: 'mock@example.com',
       totalCoins: 0,
       totalPoints: 0,
+      currentStreak: 0,
+      lastActivityDate: null,
       createdAt: DateTime.now(),
     );
     return _currentUser!;

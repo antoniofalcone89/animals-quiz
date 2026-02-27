@@ -8,9 +8,33 @@ class ApiLeaderboardRepository implements LeaderboardRepository {
   ApiLeaderboardRepository(this._client);
 
   @override
-  Future<List<LeaderboardEntry>> getLeaderboard({int limit = 50, int offset = 0}) async {
+  Future<List<LeaderboardEntry>> getLeaderboard({
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final json = await _client.get('/leaderboard?limit=$limit&offset=$offset');
-    final list = json['entries'] as List<dynamic>;
-    return list.map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>)).toList();
+    final list =
+        (json['leaderboard'] as List<dynamic>?) ??
+        (json['entries'] as List<dynamic>? ?? const []);
+    return list
+        .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<List<LeaderboardEntry>> getDailyChallengeLeaderboard({
+    String date = 'today',
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final json = await _client.get(
+      '/challenge/leaderboard?date=$date&limit=$limit&offset=$offset',
+    );
+    final list =
+        (json['leaderboard'] as List<dynamic>?) ??
+        (json['entries'] as List<dynamic>? ?? const []);
+    return list
+        .map((e) => LeaderboardEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

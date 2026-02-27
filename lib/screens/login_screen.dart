@@ -82,6 +82,8 @@ class _LoginScreenState extends State<LoginScreen> {
       gameState.setInitialStats(
         coins: user.totalCoins,
         points: user.totalPoints,
+        streak: user.currentStreak,
+        lastActivityDate: user.lastActivityDate,
       );
       if (mounted) _navigateToHome(gameState);
     } catch (e) {
@@ -121,6 +123,8 @@ class _LoginScreenState extends State<LoginScreen> {
       gameState.setInitialStats(
         coins: user.totalCoins,
         points: user.totalPoints,
+        streak: user.currentStreak,
+        lastActivityDate: user.lastActivityDate,
       );
       if (mounted) _navigateToHome(gameState);
     } catch (e) {

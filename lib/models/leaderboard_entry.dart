@@ -21,8 +21,8 @@ class LeaderboardEntry {
       userId: json['userId'] as String,
       username: json['username'] as String,
       photoUrl: json['photoUrl'] as String?,
-      totalPoints: json['totalPoints'] as int,
-      levelsCompleted: json['levelsCompleted'] as int,
+      totalPoints: (json['totalPoints'] ?? json['score'] ?? 0) as int,
+      levelsCompleted: (json['levelsCompleted'] ?? 0) as int,
     );
   }
 }

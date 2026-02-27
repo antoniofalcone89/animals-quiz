@@ -52,6 +52,8 @@ class _SplashScreenState extends State<SplashScreen> {
         gameState.setInitialStats(
           coins: user.totalCoins,
           points: user.totalPoints,
+          streak: user.currentStreak,
+          lastActivityDate: user.lastActivityDate,
         );
         Navigator.of(context).pushAndRemoveUntil(
           PageRouteBuilder(

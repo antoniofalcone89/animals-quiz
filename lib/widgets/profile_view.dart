@@ -13,12 +13,14 @@ class ProfileView extends StatelessWidget {
   final String? photoUrl;
   final int totalCoins;
   final int totalPoints;
+  final int currentStreak;
   final bool isStatsLoading;
   final bool isGuest;
   final VoidCallback? onLogout;
   final ValueChanged<String>? onLocaleChanged;
   final VoidCallback? onLinkWithGoogle;
   final Future<void> Function(String email, String password)? onLinkWithEmail;
+  final VoidCallback? onDebugForceStreakBonus;
 
   const ProfileView({
     super.key,
@@ -26,12 +28,14 @@ class ProfileView extends StatelessWidget {
     this.photoUrl,
     required this.totalCoins,
     required this.totalPoints,
+    required this.currentStreak,
     this.isStatsLoading = false,
     this.isGuest = false,
     this.onLogout,
     this.onLocaleChanged,
     this.onLinkWithGoogle,
     this.onLinkWithEmail,
+    this.onDebugForceStreakBonus,
   });
 
   void _showLinkEmailDialog(BuildContext context) {
@@ -166,9 +170,7 @@ class ProfileView extends StatelessWidget {
             backgroundImage: photoUrl != null
                 ? CachedNetworkImageProvider(photoUrl!)
                 : null,
-            onBackgroundImageError: photoUrl != null
-                ? (_, __) {}
-                : null,
+            onBackgroundImageError: photoUrl != null ? (_, __) {} : null,
             child: photoUrl == null
                 ? Text(
                     username.isNotEmpty ? username[0].toUpperCase() : '?',
@@ -224,6 +226,41 @@ class ProfileView extends StatelessWidget {
                   : PointsBadge(points: totalPoints),
             ],
           ),
+          const SizedBox(height: 10),
+          isStatsLoading
+              ? _statsBadgeShimmer()
+              : Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department_rounded,
+                        size: 18,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'streak_days'.tr(args: [currentStreak.toString()]),
+                        style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
           const SizedBox(height: 32),
 
           // Guest account linking section
@@ -435,7 +472,50 @@ class ProfileView extends StatelessWidget {
                   await TutorialService.resetTutorial();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tutorial reset — open level 1 to see it again')),
+                      const SnackBar(
+                        content: Text(
+                          'Tutorial reset — open level 1 to see it again',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.local_fire_department_rounded,
+                  color: Colors.orange,
+                ),
+                title: Text(
+                  'Force Streak Bonus',
+                  style: GoogleFonts.nunito(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange,
+                  ),
+                ),
+                onTap: () {
+                  onDebugForceStreakBonus?.call();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Next correct answer will trigger the streak bonus',
+                        ),
+                      ),
                     );
                   }
                 },

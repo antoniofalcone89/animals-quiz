@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'answer_result.dart';
 import 'buy_hint_result.dart';
+import 'daily_challenge.dart';
 import 'level.dart';
 import 'reveal_letter_result.dart';
 import '../config/env.dart';
@@ -57,13 +58,19 @@ class GameState extends ChangeNotifier {
   String? _photoUrl;
   int _totalCoins = 0;
   int _totalPoints = 0;
+  int _currentStreak = 0;
+  DateTime? _lastActivityDate;
   final Map<int, List<bool>> _levelProgress = {};
   final Map<int, List<int>> _hintsProgress = {};
   final Map<int, List<int>> _lettersProgress = {};
   List<Level> _levels = [];
   bool _isLoading = false;
   bool _isStatsLoading = true;
+  bool _isChallengeLoading = false;
   String? _error;
+  String? _challengeError;
+  bool _debugForceStreakBonus = false;
+  DailyChallenge? _todayChallenge;
 
   GameState({required QuizRepository quizRepository})
     : _quizRepository = quizRepository;
@@ -72,12 +79,30 @@ class GameState extends ChangeNotifier {
   String? get photoUrl => _photoUrl;
   int get totalCoins => _totalCoins;
   int get totalPoints => _totalPoints;
+  int get currentStreak => _currentStreak;
+  DateTime? get lastActivityDate => _lastActivityDate;
+  int? get daysSinceLastActivity {
+    if (_lastActivityDate == null) return null;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final last = DateTime(
+      _lastActivityDate!.year,
+      _lastActivityDate!.month,
+      _lastActivityDate!.day,
+    );
+    return today.difference(last).inDays;
+  }
+
+  bool get isStreakBroken => (daysSinceLastActivity ?? 0) >= 2;
   Map<int, List<bool>> get levelProgress => _levelProgress;
   Map<int, List<int>> get hintsProgress => _hintsProgress;
   List<Level> get levels => _levels;
   bool get isLoading => _isLoading;
   bool get isStatsLoading => _isStatsLoading;
+  bool get isChallengeLoading => _isChallengeLoading;
   String? get error => _error;
+  String? get challengeError => _challengeError;
+  DailyChallenge? get todayChallenge => _todayChallenge;
 
   void setUsername(String name) {
     _username = name.isEmpty ? 'Guest' : name;
@@ -99,9 +124,16 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setInitialStats({required int coins, required int points}) {
+  void setInitialStats({
+    required int coins,
+    required int points,
+    int streak = 0,
+    DateTime? lastActivityDate,
+  }) {
     _totalCoins = coins;
     _totalPoints = points;
+    _currentStreak = streak;
+    _lastActivityDate = lastActivityDate;
     _isStatsLoading = false;
     notifyListeners();
   }
@@ -148,7 +180,14 @@ class GameState extends ChangeNotifier {
       final letters = await _quizRepository.getLettersProgress();
       _lettersProgress.addAll(letters);
       _totalCoins = await _quizRepository.getUserCoins();
-      _totalPoints = await _quizRepository.getUserPoints();
+      final userStats = await _quizRepository.getCurrentUserStats();
+      if (userStats != null) {
+        _totalPoints = userStats.totalPoints;
+        _currentStreak = userStats.currentStreak;
+        _lastActivityDate = userStats.lastActivityDate;
+      } else {
+        _totalPoints = await _quizRepository.getUserPoints();
+      }
       _isStatsLoading = false;
       notifyListeners();
     } catch (e) {
@@ -158,14 +197,101 @@ class GameState extends ChangeNotifier {
     }
   }
 
+  Future<void> loadTodayChallenge() async {
+    _isChallengeLoading = true;
+    _challengeError = null;
+    notifyListeners();
+
+    try {
+      _todayChallenge = await _quizRepository.getTodayChallenge();
+      _isChallengeLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isChallengeLoading = false;
+      _challengeError = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Dev-only: next correct answer will show the streak bonus toast.
+  void debugForceStreakBonus() {
+    _debugForceStreakBonus = true;
+    _quizRepository.resetStreakDateForDebug();
+    _lastActivityDate = null;
+    notifyListeners();
+  }
+
   Future<AnswerResult> submitAnswer(
     int levelId,
     int animalIndex,
     String answer, {
     bool adRevealed = false,
   }) async {
-    final result = await _quizRepository.submitAnswer(
+    var result = await _quizRepository.submitAnswer(
       levelId: levelId,
+      animalIndex: animalIndex,
+      answer: answer,
+      adRevealed: adRevealed,
+    );
+
+    if (result.correct && _debugForceStreakBonus) {
+      _debugForceStreakBonus = false;
+      final bonus = (_currentStreak * 2).clamp(2, 20);
+      result = AnswerResult(
+        correct: result.correct,
+        coinsAwarded: result.coinsAwarded,
+        totalCoins: result.totalCoins,
+        pointsAwarded: result.pointsAwarded,
+        correctAnswer: result.correctAnswer,
+        currentStreak: result.currentStreak,
+        lastActivityDate: result.lastActivityDate,
+        streakBonusCoins: bonus,
+      );
+    }
+
+    if (result.correct) {
+      final previousStreak = _currentStreak;
+      _totalCoins = result.totalCoins;
+      _totalPoints += result.pointsAwarded;
+      if (_levelProgress.containsKey(levelId)) {
+        _levelProgress[levelId]![animalIndex] = true;
+      }
+
+      if (result.currentStreak != null) {
+        _currentStreak = result.currentStreak!;
+      }
+      if (result.lastActivityDate != null) {
+        _lastActivityDate = result.lastActivityDate;
+      }
+
+      if (result.currentStreak == null || result.lastActivityDate == null) {
+        try {
+          final userStats = await _quizRepository.getCurrentUserStats();
+          if (userStats != null) {
+            _totalPoints = userStats.totalPoints;
+            _currentStreak = userStats.currentStreak;
+            _lastActivityDate = userStats.lastActivityDate;
+          }
+        } catch (_) {}
+      }
+
+      if (_currentStreak > previousStreak && _lastActivityDate == null) {
+        final now = DateTime.now();
+        _lastActivityDate = DateTime(now.year, now.month, now.day);
+      }
+
+      notifyListeners();
+    }
+
+    return result;
+  }
+
+  Future<AnswerResult> submitDailyChallengeAnswer(
+    int animalIndex,
+    String answer, {
+    bool adRevealed = false,
+  }) async {
+    final result = await _quizRepository.submitDailyChallengeAnswer(
       animalIndex: animalIndex,
       answer: answer,
       adRevealed: adRevealed,
@@ -174,9 +300,28 @@ class GameState extends ChangeNotifier {
     if (result.correct) {
       _totalCoins = result.totalCoins;
       _totalPoints += result.pointsAwarded;
-      if (_levelProgress.containsKey(levelId)) {
-        _levelProgress[levelId]![animalIndex] = true;
+
+      if (result.currentStreak != null) {
+        _currentStreak = result.currentStreak!;
       }
+      if (result.lastActivityDate != null) {
+        _lastActivityDate = result.lastActivityDate;
+      }
+
+      if (_todayChallenge != null && result.pointsAwarded > 0) {
+        final animalsCount = _todayChallenge!.animals.length;
+        final nextProgress = (_todayChallenge!.progress + 1).clamp(
+          0,
+          animalsCount,
+        );
+        final nextScore = (_todayChallenge!.score ?? 0) + result.pointsAwarded;
+        _todayChallenge = _todayChallenge!.copyWith(
+          progress: nextProgress,
+          completed: nextProgress >= animalsCount,
+          score: nextScore,
+        );
+      }
+
       notifyListeners();
     }
 

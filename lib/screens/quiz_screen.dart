@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../models/answer_result.dart';
 import '../models/game_state.dart';
 import '../models/level.dart';
 import '../services/admob_service.dart';
@@ -24,12 +25,23 @@ class QuizScreen extends StatefulWidget {
   final Level level;
   final int animalIndex;
   final GameState gameState;
+  final bool isDailyChallenge;
+  final int initialCorrectCount;
+  final Future<AnswerResult> Function(
+    int animalIndex,
+    String answer, {
+    bool adRevealed,
+  })?
+  submitAnswerOverride;
 
   const QuizScreen({
     super.key,
     required this.level,
     required this.animalIndex,
     required this.gameState,
+    this.isDailyChallenge = false,
+    this.initialCorrectCount = 0,
+    this.submitAnswerOverride,
   });
 
   @override
@@ -53,6 +65,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isLoadingRewardedAd = false;
   bool _isShowingRewardedAd = false;
   bool _showTutorial = false;
+  int _streakBonusCoins = 0;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -67,9 +80,9 @@ class _QuizScreenState extends State<QuizScreen> {
   void initState() {
     super.initState();
     _questionOrder = List.generate(widget.level.animals.length, (i) => i);
-    _initialLevelCorrect = widget.gameState.getLevelCorrectCount(
-      widget.level.id,
-    );
+    _initialLevelCorrect = widget.isDailyChallenge
+        ? widget.initialCorrectCount
+        : widget.gameState.getLevelCorrectCount(widget.level.id);
     // Start from the tapped animal, then continue through the rest
     final startIdx = _questionOrder.indexOf(widget.animalIndex);
     _questionOrder = [
@@ -252,18 +265,45 @@ class _QuizScreenState extends State<QuizScreen> {
 
   int get _currentAnimalIndex => _questionOrder[_currentIndex];
 
-  int get _hintsRevealed =>
-      widget.gameState.getHintsRevealed(widget.level.id, _currentAnimalIndex);
+  int get _hintsRevealed => widget.isDailyChallenge
+      ? 0
+      : widget.gameState.getHintsRevealed(widget.level.id, _currentAnimalIndex);
 
   bool _isCurrentAnimalGuessed() {
+    if (widget.isDailyChallenge) return false;
     return widget.gameState.isAnimalGuessed(
       widget.level.id,
       _currentAnimalIndex,
     );
   }
 
-  int get _lettersRevealed =>
-      widget.gameState.getLettersRevealed(widget.level.id, _currentAnimalIndex);
+  int get _lettersRevealed => widget.isDailyChallenge
+      ? 0
+      : widget.gameState.getLettersRevealed(
+          widget.level.id,
+          _currentAnimalIndex,
+        );
+
+  Future<AnswerResult> _submitCurrentAnswer(
+    String answer, {
+    bool adRevealed = false,
+  }) {
+    final submitOverride = widget.submitAnswerOverride;
+    if (submitOverride != null) {
+      return submitOverride(
+        _currentAnimalIndex,
+        answer,
+        adRevealed: adRevealed,
+      );
+    }
+
+    return widget.gameState.submitAnswer(
+      widget.level.id,
+      _currentAnimalIndex,
+      answer,
+      adRevealed: adRevealed,
+    );
+  }
 
   void _showHintsSheet(List<String> hints, int hintsRevealed) {
     if (hintsRevealed <= 0) return;
@@ -312,6 +352,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _useLetterReveal() async {
+    if (widget.isDailyChallenge) return;
     if (_lettersRevealed >= GameState.maxLetterReveals) return;
 
     if (widget.gameState.totalCoins < GameState.letterRevealCost) {
@@ -343,6 +384,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _useHint() async {
+    if (widget.isDailyChallenge) return;
     final hintsRevealed = _hintsRevealed;
     final animal = widget.level.animals[_currentAnimalIndex];
     if (hintsRevealed >= animal.hints.length) return;
@@ -445,29 +487,22 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _revealAnimal(String animalName) {
-    widget.gameState
-        .submitAnswer(
-          widget.level.id,
-          _currentAnimalIndex,
-          animalName,
-          adRevealed: true,
-        )
-        .then((result) {
-          if (!mounted) return;
-          String? funFact;
-          final animal = widget.level.animals[_currentAnimalIndex];
-          if (animal.funFacts.isNotEmpty) {
-            funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
-          }
-          _focusNode.unfocus();
-          setState(() {
-            _answered = true;
-            _revealedName = result.correctAnswer ?? animalName;
-            _sessionCoins += result.coinsAwarded;
-            _sessionCorrect++;
-            _currentFunFact = funFact;
-          });
-        });
+    _submitCurrentAnswer(animalName, adRevealed: true).then((result) {
+      if (!mounted) return;
+      String? funFact;
+      final animal = widget.level.animals[_currentAnimalIndex];
+      if (animal.funFacts.isNotEmpty) {
+        funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
+      }
+      _focusNode.unfocus();
+      setState(() {
+        _answered = true;
+        _revealedName = result.correctAnswer ?? animalName;
+        _sessionCoins += result.coinsAwarded;
+        _sessionCorrect++;
+        _currentFunFact = funFact;
+      });
+    });
   }
 
   String _insertSpaces(String typed, String name, List<int> revealedPositions) {
@@ -517,11 +552,13 @@ class _QuizScreenState extends State<QuizScreen> {
       // Persist to backend in the background; update coins when it responds.
       // On network failure we swallow silently — progress will appear unguessed
       // on next load, which is acceptable vs. delaying feedback every time.
-      widget.gameState
-          .submitAnswer(widget.level.id, _currentAnimalIndex, guess)
+      _submitCurrentAnswer(guess)
           .then((result) {
             if (!mounted) return;
             setState(() => _sessionCoins += result.coinsAwarded);
+            if (result.streakBonusCoins > 0) {
+              _showStreakBonus(result.streakBonusCoins);
+            }
           })
           .catchError((_) {});
     } else {
@@ -533,6 +570,13 @@ class _QuizScreenState extends State<QuizScreen> {
         setState(() => _showWrongMessage = false);
       });
     }
+  }
+
+  void _showStreakBonus(int bonus) {
+    setState(() => _streakBonusCoins = bonus);
+    Future.delayed(const Duration(milliseconds: 4050), () {
+      if (mounted) setState(() => _streakBonusCoins = 0);
+    });
   }
 
   void _next() {
@@ -553,9 +597,9 @@ class _QuizScreenState extends State<QuizScreen> {
   @override
   Widget build(BuildContext context) {
     if (_showResults) {
-      final persistedCorrect = widget.gameState.getLevelCorrectCount(
-        widget.level.id,
-      );
+      final persistedCorrect = widget.isDailyChallenge
+          ? _initialLevelCorrect + _sessionCorrect
+          : widget.gameState.getLevelCorrectCount(widget.level.id);
       final displayedCorrect = max(
         persistedCorrect,
         _initialLevelCorrect + _sessionCorrect,
@@ -566,6 +610,12 @@ class _QuizScreenState extends State<QuizScreen> {
         totalQuestions: _questionOrder.length,
         coinsEarned: _sessionCoins,
         onBackToLevel: () => Navigator.of(context).pop(),
+        completionTitleKey: widget.isDailyChallenge
+            ? 'challenge_completed'
+            : 'level_completed',
+        backButtonLabelKey: widget.isDailyChallenge
+            ? 'back_to_home'
+            : 'back_to_level',
       );
     }
 
@@ -587,9 +637,9 @@ class _QuizScreenState extends State<QuizScreen> {
     final int? nextHintCost = hintsRevealed < animal.hints.length
         ? GameState.hintCosts[hintsRevealed]
         : null;
-    final persistedCorrect = widget.gameState.getLevelCorrectCount(
-      widget.level.id,
-    );
+    final persistedCorrect = widget.isDailyChallenge
+        ? _initialLevelCorrect + _sessionCorrect
+        : widget.gameState.getLevelCorrectCount(widget.level.id);
     final completionCorrect = max(
       persistedCorrect,
       _initialLevelCorrect + _sessionCorrect,
@@ -674,7 +724,9 @@ class _QuizScreenState extends State<QuizScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.13),
@@ -812,10 +864,19 @@ class _QuizScreenState extends State<QuizScreen> {
 
                         const SizedBox(height: 12),
 
+                        // Streak bonus toast — inline, right under revealed name
+                        if (_answered && _streakBonusCoins > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _StreakBonusToast(coins: _streakBonusCoins),
+                          ),
+
                         // Hint buttons — no nested AnimatedSize; the outer
                         // AnimatedSize handles the height transition when
                         // _answered flips, avoiding multi-step resizing.
-                        if (!alreadyGuessed && !_answered)
+                        if (!widget.isDailyChallenge &&
+                            !alreadyGuessed &&
+                            !_answered)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Wrap(
@@ -899,6 +960,117 @@ class _QuizScreenState extends State<QuizScreen> {
           onComplete: _onTutorialComplete,
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Streak bonus toast — fades + slides in, holds, then fades out
+// ---------------------------------------------------------------------------
+
+class _StreakBonusToast extends StatefulWidget {
+  final int coins;
+  const _StreakBonusToast({required this.coins});
+
+  @override
+  State<_StreakBonusToast> createState() => _StreakBonusToastState();
+}
+
+class _StreakBonusToastState extends State<_StreakBonusToast>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timeline: 0–250ms fade+slide in, 250–3750ms hold, 3750–4050ms fade out
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4050),
+    )..forward();
+
+    _opacity = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 250,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 3500),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 300,
+      ),
+    ]).animate(_ctrl);
+
+    _slide = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: const Offset(0, 0.3),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 250,
+      ),
+      TweenSequenceItem(tween: ConstantTween(Offset.zero), weight: 3800),
+    ]).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) => FadeTransition(
+        opacity: _opacity,
+        child: SlideTransition(position: _slide, child: child),
+      ),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade700,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withValues(alpha: 0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.local_fire_department_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'streak_bonus_coins'.tr(args: [widget.coins.toString()]),
+                style: GoogleFonts.nunito(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
