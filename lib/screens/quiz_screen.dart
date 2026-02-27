@@ -610,6 +610,12 @@ class _QuizScreenState extends State<QuizScreen> {
         totalQuestions: _questionOrder.length,
         coinsEarned: _sessionCoins,
         onBackToLevel: () => Navigator.of(context).pop(),
+        completionTitleKey: widget.isDailyChallenge
+            ? 'challenge_completed'
+            : 'level_completed',
+        backButtonLabelKey: widget.isDailyChallenge
+            ? 'back_to_home'
+            : 'back_to_level',
       );
     }
 

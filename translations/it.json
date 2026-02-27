@@ -23,6 +23,7 @@
   "perfect_score": "Perfetto!",
   "coins_earned": "+{} Monete guadagnate",
   "back_to_level": "TORNA AL LIVELLO",
+  "back_to_home": "TORNA ALLA HOME",
   "questions_count": "{} Domande",
   "questions_progress": "{}/{}",
   "hints": "Suggerimenti",
@@ -105,5 +106,6 @@
   "challenge_score": "Punteggio: {}",
   "play_challenge": "Gioca",
   "challenges_today": "Progresso di oggi: {}/{}",
-  "daily_leaderboard_empty": "Nessun punteggio ancora oggi. Sii il primo a completare la sfida!"
+  "daily_leaderboard_empty": "Nessun punteggio ancora oggi. Sii il primo a completare la sfida!",
+  "next_challenge_tomorrow": "Una nuova sfida giornaliera sarà disponibile domani."
 }

@@ -193,6 +193,39 @@ class _CompletedView extends StatelessWidget {
                     color: Colors.grey.shade700,
                   ),
                 ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.deepPurple.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.schedule_rounded,
+                        size: 18,
+                        color: AppColors.deepPurple,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'next_challenge_tomorrow'.tr(),
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.deepPurple,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

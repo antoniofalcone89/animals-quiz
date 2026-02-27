@@ -199,7 +199,7 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       itemCount: safeEntries.length,
       itemBuilder: (context, index) {
         final entry = safeEntries[index];
@@ -282,7 +282,7 @@ class _LeaderboardTile extends StatelessWidget {
             // Avatar
             _Avatar(
               photoUrl: entry.photoUrl,
-              blurred: _isTop3,
+              blurred: true,
               medalColor: _isTop3 ? _medalColor : null,
             ),
             const SizedBox(width: 12),

@@ -23,6 +23,7 @@
   "perfect_score": "Perfect!",
   "coins_earned": "+{} Coins Earned",
   "back_to_level": "BACK TO LEVEL",
+  "back_to_home": "BACK TO HOME",
   "questions_count": "{} Questions",
   "questions_progress": "{}/{}",
   "hints": "Hints",
@@ -105,5 +106,6 @@
   "challenge_score": "Score: {}",
   "play_challenge": "Play",
   "challenges_today": "Today's progress: {}/{}",
-  "daily_leaderboard_empty": "No scores yet today. Be the first to complete the challenge!"
+  "daily_leaderboard_empty": "No scores yet today. Be the first to complete the challenge!",
+  "next_challenge_tomorrow": "A new daily challenge will be available tomorrow."
 }
