@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/leaderboard_entry.dart';
 import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
+import 'shimmer_loading.dart';
 
 class LeaderboardView extends StatefulWidget {
   const LeaderboardView({super.key});
@@ -24,10 +25,37 @@ class _LeaderboardViewState extends State<LeaderboardView> {
   String? _globalError;
   String? _dailyError;
 
+  final _globalScrollCtrl = ScrollController();
+  final _dailyScrollCtrl = ScrollController();
+  bool _showGlobalTopBtn = false;
+  bool _showDailyTopBtn = false;
+  bool _showFindingBanner = false;
+
+  // Approximate item height: 40 avatar + 20 v-padding + 8 bottom margin
+  static const _itemHeight = 68.0;
+  static const _listPaddingTop = 10.0;
+  // How many items above the user to show
+  static const _leadingItems = 2;
+
   @override
   void initState() {
     super.initState();
+    _globalScrollCtrl.addListener(() {
+      final show = _globalScrollCtrl.offset > 120;
+      if (show != _showGlobalTopBtn) setState(() => _showGlobalTopBtn = show);
+    });
+    _dailyScrollCtrl.addListener(() {
+      final show = _dailyScrollCtrl.offset > 120;
+      if (show != _showDailyTopBtn) setState(() => _showDailyTopBtn = show);
+    });
     _loadLeaderboards();
+  }
+
+  @override
+  void dispose() {
+    _globalScrollCtrl.dispose();
+    _dailyScrollCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLeaderboards() async {
@@ -42,6 +70,9 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           .getCurrentUser();
       if (!mounted) return;
       setState(() => _currentUserId = user?.id);
+      // Re-attempt scroll once we know who the user is
+      _scrollToUser(entries: _globalEntries, ctrl: _globalScrollCtrl);
+      _scrollToUser(entries: _dailyEntries, ctrl: _dailyScrollCtrl);
     } catch (_) {}
   }
 
@@ -72,6 +103,14 @@ class _LeaderboardViewState extends State<LeaderboardView> {
           _isLoadingDaily = false;
         }
       });
+      // Scroll after the list has been laid out
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (global) {
+          _scrollToUser(entries: _globalEntries, ctrl: _globalScrollCtrl);
+        } else {
+          _scrollToUser(entries: _dailyEntries, ctrl: _dailyScrollCtrl);
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -84,6 +123,46 @@ class _LeaderboardViewState extends State<LeaderboardView> {
         }
       });
     }
+  }
+
+  Future<void> _scrollToUser({
+    required List<LeaderboardEntry>? entries,
+    required ScrollController ctrl,
+  }) async {
+    if (_currentUserId == null || entries == null) return;
+    final index = entries.indexWhere((e) => e.userId == _currentUserId);
+    if (index < 0) return;
+    // Already at/near top — no need to scroll
+    if (index < _leadingItems) return;
+
+    final targetIndex = (index - _leadingItems).clamp(0, entries.length - 1);
+    final offset = _listPaddingTop + targetIndex * _itemHeight;
+
+    if (!ctrl.hasClients) return;
+    final maxScroll = ctrl.position.maxScrollExtent;
+    final clampedOffset = offset.clamp(0.0, maxScroll);
+    if (clampedOffset <= 0) return;
+
+    // Show "finding your position" banner
+    if (mounted) setState(() => _showFindingBanner = true);
+
+    await ctrl.animateTo(
+      clampedOffset,
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOutCubic,
+    );
+
+    // Keep banner visible briefly, then fade out
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (mounted) setState(() => _showFindingBanner = false);
+  }
+
+  Future<void> _scrollToTop(ScrollController ctrl) async {
+    await ctrl.animateTo(
+      0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+    );
   }
 
   @override
@@ -127,20 +206,37 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             ),
           ),
           Expanded(
-            child: TabBarView(
+            child: Stack(
               children: [
-                _buildList(
-                  entries: _globalEntries,
-                  isLoading: _isLoadingGlobal,
-                  error: _globalError,
-                  onRetry: () => _loadLeaderboard(global: true),
+                TabBarView(
+                  children: [
+                    _buildList(
+                      entries: _globalEntries,
+                      isLoading: _isLoadingGlobal,
+                      error: _globalError,
+                      onRetry: () => _loadLeaderboard(global: true),
+                      scrollCtrl: _globalScrollCtrl,
+                      showTopBtn: _showGlobalTopBtn,
+                      onScrollToTop: () => _scrollToTop(_globalScrollCtrl),
+                    ),
+                    _buildList(
+                      entries: _dailyEntries,
+                      isLoading: _isLoadingDaily,
+                      error: _dailyError,
+                      onRetry: () => _loadLeaderboard(global: false),
+                      isDaily: true,
+                      scrollCtrl: _dailyScrollCtrl,
+                      showTopBtn: _showDailyTopBtn,
+                      onScrollToTop: () => _scrollToTop(_dailyScrollCtrl),
+                    ),
+                  ],
                 ),
-                _buildList(
-                  entries: _dailyEntries,
-                  isLoading: _isLoadingDaily,
-                  error: _dailyError,
-                  onRetry: () => _loadLeaderboard(global: false),
-                  isDaily: true,
+                // "Finding your position" banner
+                Positioned(
+                  top: 12,
+                  left: 0,
+                  right: 0,
+                  child: _FindingPositionBanner(visible: _showFindingBanner),
                 ),
               ],
             ),
@@ -155,10 +251,13 @@ class _LeaderboardViewState extends State<LeaderboardView> {
     required bool isLoading,
     required String? error,
     required VoidCallback onRetry,
+    required ScrollController scrollCtrl,
+    required bool showTopBtn,
+    required VoidCallback onScrollToTop,
     bool isDaily = false,
   }) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return _LeaderboardShimmer();
     }
 
     if (error != null) {
@@ -198,16 +297,284 @@ class _LeaderboardViewState extends State<LeaderboardView> {
       );
     }
 
+    return Stack(
+      children: [
+        ListView.builder(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 80),
+          itemCount: safeEntries.length,
+          itemBuilder: (context, index) {
+            final entry = safeEntries[index];
+            return _AnimatedTile(
+              index: index,
+              child: _LeaderboardTile(
+                entry: entry,
+                isCurrentUser: entry.userId == _currentUserId,
+              ),
+            );
+          },
+        ),
+        // Bounce-in FAB
+        Positioned(
+          bottom: 16,
+          right: 16,
+          child: _BouncyFab(
+            visible: showTopBtn,
+            heroTag: isDaily ? 'daily_top' : 'global_top',
+            onPressed: onScrollToTop,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Shimmer skeleton ─────────────────────────────────────────────────────────
+
+class _LeaderboardShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      itemCount: safeEntries.length,
-      itemBuilder: (context, index) {
-        final entry = safeEntries[index];
-        return _LeaderboardTile(
-          entry: entry,
-          isCurrentUser: entry.userId == _currentUserId,
-        );
-      },
+      itemCount: 10,
+      itemBuilder: (_, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: ShimmerLoading(
+          baseColor: Colors.grey.shade200,
+          highlightColor: Colors.grey.shade50,
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(
+              children: [
+                // Rank placeholder
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Avatar placeholder
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Name placeholder
+                Expanded(
+                  child: Container(
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Score placeholder
+                Container(
+                  width: 48,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Staggered slide-in tile ──────────────────────────────────────────────────
+
+class _AnimatedTile extends StatefulWidget {
+  final int index;
+  final Widget child;
+
+  const _AnimatedTile({required this.index, required this.child});
+
+  @override
+  State<_AnimatedTile> createState() => _AnimatedTileState();
+}
+
+class _AnimatedTileState extends State<_AnimatedTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<Offset> _slide;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    // Cap stagger at 20 items so late items don't wait too long
+    final staggerMs = (widget.index.clamp(0, 20) * 30).clamp(0, 600);
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _fade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+
+    Future.delayed(Duration(milliseconds: staggerMs), () {
+      if (mounted) _ctrl.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(position: _slide, child: widget.child),
+    );
+  }
+}
+
+// ─── "Finding your position" banner ──────────────────────────────────────────
+
+class _FindingPositionBanner extends StatelessWidget {
+  final bool visible;
+  const _FindingPositionBanner({required this.visible});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      offset: visible ? Offset.zero : const Offset(0, -1.5),
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutBack,
+      child: AnimatedOpacity(
+        opacity: visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 250),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.deepPurple,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.deepPurple.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'leaderboard_finding_position'.tr(),
+                  style: GoogleFonts.nunito(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Bouncy FAB ───────────────────────────────────────────────────────────────
+
+class _BouncyFab extends StatefulWidget {
+  final bool visible;
+  final String heroTag;
+  final VoidCallback onPressed;
+
+  const _BouncyFab({
+    required this.visible,
+    required this.heroTag,
+    required this.onPressed,
+  });
+
+  @override
+  State<_BouncyFab> createState() => _BouncyFabState();
+}
+
+class _BouncyFabState extends State<_BouncyFab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _scale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void didUpdateWidget(_BouncyFab old) {
+    super.didUpdateWidget(old);
+    if (widget.visible && !old.visible) {
+      _ctrl.forward(from: 0);
+    } else if (!widget.visible && old.visible) {
+      _ctrl.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scale,
+      child: FloatingActionButton.small(
+        heroTag: widget.heroTag,
+        onPressed: widget.onPressed,
+        backgroundColor: AppColors.deepPurple,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        child: const Icon(Icons.keyboard_arrow_up_rounded, size: 24),
+      ),
     );
   }
 }

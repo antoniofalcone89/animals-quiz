@@ -107,5 +107,12 @@
   "play_challenge": "Gioca",
   "challenges_today": "Progresso di oggi: {}/{}",
   "daily_leaderboard_empty": "Nessun punteggio ancora oggi. Sii il primo a completare la sfida!",
-  "next_challenge_tomorrow": "Una nuova sfida giornaliera sarà disponibile domani."
+  "next_challenge_tomorrow": "Una nuova sfida giornaliera sarà disponibile domani.",
+  "daily_challenge_intro_title": "Come funziona",
+  "daily_challenge_intro_body": "Ogni giorno ricevi un nuovo gruppo di animali da indovinare. Rispondi correttamente a quanti più ne puoi — il tuo punteggio viene salvato e puoi competere nella classifica giornaliera. Torna domani per una nuova sfida!",
+  "daily_challenge_intro_rule1": "Nuovi animali ogni giorno",
+  "daily_challenge_intro_rule2": "Punteggio basato sulle risposte corrette",
+  "daily_challenge_intro_rule3": "Competi nella classifica giornaliera",
+  "daily_challenge_intro_cta": "Iniziamo!",
+  "leaderboard_finding_position": "Ricerca della tua posizione…"
 }

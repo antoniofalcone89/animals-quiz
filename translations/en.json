@@ -107,5 +107,12 @@
   "play_challenge": "Play",
   "challenges_today": "Today's progress: {}/{}",
   "daily_leaderboard_empty": "No scores yet today. Be the first to complete the challenge!",
-  "next_challenge_tomorrow": "A new daily challenge will be available tomorrow."
+  "next_challenge_tomorrow": "A new daily challenge will be available tomorrow.",
+  "daily_challenge_intro_title": "How it works",
+  "daily_challenge_intro_body": "Every day you get a new set of animals to guess. Answer as many as you can correctly — your score is saved and you can compete on the daily leaderboard. Come back tomorrow for a brand new challenge!",
+  "daily_challenge_intro_rule1": "New animals every day",
+  "daily_challenge_intro_rule2": "Score based on correct answers",
+  "daily_challenge_intro_rule3": "Compete on the daily leaderboard",
+  "daily_challenge_intro_cta": "Let's Go!",
+  "leaderboard_finding_position": "Finding your position…"
 }

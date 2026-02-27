@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/daily_challenge.dart';
 import '../models/game_state.dart';
@@ -17,6 +18,8 @@ class DailyChallengeScreen extends StatefulWidget {
 }
 
 class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
+  static const _introSeenKey = 'daily_challenge_intro_seen';
+
   @override
   void initState() {
     super.initState();
@@ -24,6 +27,27 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
     if (widget.gameState.todayChallenge == null) {
       widget.gameState.loadTodayChallenge();
     }
+    _maybeShowIntro();
+  }
+
+  Future<void> _maybeShowIntro() async {
+    final prefs = await SharedPreferences.getInstance();
+    final seen = prefs.getBool(_introSeenKey) ?? false;
+    if (!seen && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showIntroDialog();
+      });
+    }
+  }
+
+  Future<void> _showIntroDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _DailyChallengeIntroDialog(),
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_introSeenKey, true);
   }
 
   @override
@@ -140,6 +164,133 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   }
 }
 
+class _DailyChallengeIntroDialog extends StatelessWidget {
+  const _DailyChallengeIntroDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                gradient: AppColors.purpleGradient,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.local_fire_department_rounded,
+                color: Colors.white,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'daily_challenge_intro_title'.tr(),
+              style: GoogleFonts.nunito(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: AppColors.deepPurple,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'daily_challenge_intro_body'.tr(),
+              style: GoogleFonts.nunito(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            _RuleRow(
+              icon: Icons.today_rounded,
+              text: 'daily_challenge_intro_rule1'.tr(),
+            ),
+            const SizedBox(height: 10),
+            _RuleRow(
+              icon: Icons.stars_rounded,
+              text: 'daily_challenge_intro_rule2'.tr(),
+            ),
+            const SizedBox(height: 10),
+            _RuleRow(
+              icon: Icons.emoji_events_rounded,
+              text: 'daily_challenge_intro_rule3'.tr(),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'daily_challenge_intro_cta'.tr(),
+                  style: GoogleFonts.nunito(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RuleRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _RuleRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.deepPurple.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 20, color: AppColors.deepPurple),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.deepPurple,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _CompletedView extends StatelessWidget {
   final DailyChallenge challenge;
 
@@ -171,13 +322,13 @@ class _CompletedView extends StatelessWidget {
                 const Icon(
                   Icons.verified_rounded,
                   color: AppColors.correctGreen,
-                  size: 44,
+                  size: 54,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Text(
                   'challenge_completed'.tr(),
                   style: GoogleFonts.nunito(
-                    fontSize: 20,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     color: AppColors.deepPurple,
                   ),
@@ -188,7 +339,7 @@ class _CompletedView extends StatelessWidget {
                     args: [(challenge.score ?? 0).toString()],
                   ),
                   style: GoogleFonts.nunito(
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: Colors.grey.shade700,
                   ),
@@ -217,7 +368,7 @@ class _CompletedView extends StatelessWidget {
                         child: Text(
                           'next_challenge_tomorrow'.tr(),
                           style: GoogleFonts.nunito(
-                            fontSize: 13,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: AppColors.deepPurple,
                           ),
