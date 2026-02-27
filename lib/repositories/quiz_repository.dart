@@ -1,5 +1,6 @@
 import '../models/answer_result.dart';
 import '../models/buy_hint_result.dart';
+import '../models/daily_challenge.dart';
 import '../models/level.dart';
 import '../models/reveal_letter_result.dart';
 import '../models/user.dart';
@@ -9,8 +10,16 @@ abstract class QuizRepository {
 
   Future<Level> getLevelDetail(int levelId);
 
+  Future<DailyChallenge> getTodayChallenge();
+
   Future<AnswerResult> submitAnswer({
     required int levelId,
+    required int animalIndex,
+    required String answer,
+    bool adRevealed = false,
+  });
+
+  Future<AnswerResult> submitDailyChallengeAnswer({
     required int animalIndex,
     required String answer,
     bool adRevealed = false,

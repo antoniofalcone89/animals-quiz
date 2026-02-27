@@ -99,5 +99,11 @@
   "info_points_body": "I punti riflettono quanto giochi bene. Rispondi senza usare suggerimenti per guadagnare più punti — la tua posizione in classifica dipende da loro!",
   "info_streak_title": "Striscia Giornaliera",
   "info_streak_body": "Torna ogni giorno per mantenere la tua striscia! Rispondi ad almeno una domanda al giorno per mantenerla. Più è lunga, più guadagni!",
-  "streak_bonus_coins": "+{} monete bonus per la tua striscia! 🔥"
+  "streak_bonus_coins": "+{} monete bonus per la tua striscia! 🔥",
+  "daily_challenge": "Sfida Giornaliera",
+  "challenge_completed": "Completata ✓",
+  "challenge_score": "Punteggio: {}",
+  "play_challenge": "Gioca",
+  "challenges_today": "Progresso di oggi: {}/{}",
+  "daily_leaderboard_empty": "Nessun punteggio ancora oggi. Sii il primo a completare la sfida!"
 }

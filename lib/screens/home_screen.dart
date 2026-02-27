@@ -8,6 +8,7 @@ import '../widgets/home_header.dart';
 import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
 import '../widgets/profile_view.dart';
+import 'daily_challenge_screen.dart';
 import 'level_detail_screen.dart';
 import 'login_screen.dart';
 
@@ -29,6 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.gameState.addListener(_onStateChanged);
     widget.gameState.loadLevels();
     widget.gameState.loadProgress();
+    widget.gameState.loadTodayChallenge();
   }
 
   @override
@@ -104,6 +106,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleDebugForceStreakBonus() {
     widget.gameState.debugForceStreakBonus();
     setState(() {});
+  }
+
+  Future<void> _openDailyChallenge() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DailyChallengeScreen(gameState: widget.gameState),
+      ),
+    );
+    await widget.gameState.loadTodayChallenge();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -187,6 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 widget.gameState.loadLevels();
                 widget.gameState.loadProgress();
+                widget.gameState.loadTodayChallenge();
               },
               child: Text('retry'.tr()),
             ),
@@ -257,7 +270,238 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.grey.withValues(alpha: 0.2),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: _DailyChallengeCard(
+            gameState: widget.gameState,
+            onPlay: _openDailyChallenge,
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _DailyChallengeCard extends StatelessWidget {
+  final GameState gameState;
+  final VoidCallback onPlay;
+
+  const _DailyChallengeCard({required this.gameState, required this.onPlay});
+
+  @override
+  Widget build(BuildContext context) {
+    final challenge = gameState.todayChallenge;
+    final isCompleted = challenge?.completed == true;
+    final isLoading = gameState.isChallengeLoading && challenge == null;
+
+    return GestureDetector(
+      onTap: (challenge != null && !isLoading) ? onPlay : null,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: isCompleted
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF2E7D32), Color(0xFF43A047)],
+                )
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF7B42F6), Color(0xFF5C2DB8)],
+                ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: (isCompleted
+                      ? const Color(0xFF2E7D32)
+                      : AppColors.deepPurple)
+                  .withValues(alpha: 0.35),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              // Left: icon + text
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isCompleted
+                              ? Icons.check_circle_rounded
+                              : Icons.local_fire_department_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'daily_challenge'.tr(),
+                          style: GoogleFonts.nunito(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white.withValues(alpha: 0.9),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    if (isLoading)
+                      Container(
+                        height: 16,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      )
+                    else if (gameState.challengeError != null && challenge == null)
+                      Text(
+                        gameState.challengeError!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.nunito(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      )
+                    else if (challenge != null) ...[
+                      Text(
+                        isCompleted
+                            ? 'challenge_score'.tr(
+                                args: [(challenge.score ?? 0).toString()],
+                              )
+                            : 'challenges_today'.tr(
+                                args: [
+                                  challenge.progress.toString(),
+                                  challenge.animals.length.toString(),
+                                ],
+                              ),
+                        style: GoogleFonts.nunito(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (!isCompleted && challenge.animals.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: challenge.progress / challenge.animals.length,
+                            minHeight: 5,
+                            backgroundColor: Colors.white.withValues(alpha: 0.25),
+                            valueColor: const AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              // Right: CTA button
+              _ChallengeButton(
+                isCompleted: isCompleted,
+                isLoading: isLoading,
+                hasChallenge: challenge != null,
+                onTap: onPlay,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChallengeButton extends StatefulWidget {
+  final bool isCompleted;
+  final bool isLoading;
+  final bool hasChallenge;
+  final VoidCallback onTap;
+
+  const _ChallengeButton({
+    required this.isCompleted,
+    required this.isLoading,
+    required this.hasChallenge,
+    required this.onTap,
+  });
+
+  @override
+  State<_ChallengeButton> createState() => _ChallengeButtonState();
+}
+
+class _ChallengeButtonState extends State<_ChallengeButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = widget.hasChallenge && !widget.isLoading;
+
+    return GestureDetector(
+      onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: enabled
+          ? (_) {
+              setState(() => _pressed = false);
+              widget.onTap();
+            }
+          : null,
+      onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Text(
+            widget.isCompleted
+                ? 'challenge_completed'.tr()
+                : 'play_challenge'.tr(),
+            style: GoogleFonts.nunito(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: widget.isCompleted
+                  ? const Color(0xFF2E7D32)
+                  : AppColors.deepPurple,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

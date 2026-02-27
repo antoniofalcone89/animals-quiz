@@ -99,5 +99,11 @@
   "info_points_body": "Points reflect how well you play. Answer without using hints to earn more points — your rank on the leaderboard depends on them!",
   "info_streak_title": "Daily Streak",
   "info_streak_body": "Come back every day to keep your streak alive! Answer at least one question daily to maintain it. The longer your streak, the more you earn!",
-  "streak_bonus_coins": "+{} bonus coins for your streak! 🔥"
+  "streak_bonus_coins": "+{} bonus coins for your streak! 🔥",
+  "daily_challenge": "Daily Challenge",
+  "challenge_completed": "Completed ✓",
+  "challenge_score": "Score: {}",
+  "play_challenge": "Play",
+  "challenges_today": "Today's progress: {}/{}",
+  "daily_leaderboard_empty": "No scores yet today. Be the first to complete the challenge!"
 }

@@ -16,53 +16,152 @@ class LeaderboardView extends StatefulWidget {
 }
 
 class _LeaderboardViewState extends State<LeaderboardView> {
-  List<LeaderboardEntry>? _entries;
+  List<LeaderboardEntry>? _globalEntries;
+  List<LeaderboardEntry>? _dailyEntries;
   String? _currentUserId;
-  bool _isLoading = true;
-  String? _error;
+  bool _isLoadingGlobal = true;
+  bool _isLoadingDaily = true;
+  String? _globalError;
+  String? _dailyError;
 
   @override
   void initState() {
     super.initState();
-    _loadLeaderboard();
+    _loadLeaderboards();
   }
 
-  Future<void> _loadLeaderboard() async {
+  Future<void> _loadLeaderboards() async {
+    _loadLeaderboard(global: true);
+    _loadLeaderboard(global: false);
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final user = await ServiceLocator.instance.authRepository
+          .getCurrentUser();
+      if (!mounted) return;
+      setState(() => _currentUserId = user?.id);
+    } catch (_) {}
+  }
+
+  Future<void> _loadLeaderboard({required bool global}) async {
     setState(() {
-      _isLoading = true;
-      _error = null;
+      if (global) {
+        _isLoadingGlobal = true;
+        _globalError = null;
+      } else {
+        _isLoadingDaily = true;
+        _dailyError = null;
+      }
     });
 
     try {
-      final auth = ServiceLocator.instance.authRepository;
-      final entriesFuture =
-          ServiceLocator.instance.leaderboardRepository.getLeaderboard();
-      final userFuture = auth.getCurrentUser();
-      final entries = await entriesFuture;
-      final user = await userFuture;
+      final repository = ServiceLocator.instance.leaderboardRepository;
+      final entries = global
+          ? await repository.getLeaderboard()
+          : await repository.getDailyChallengeLeaderboard();
 
       if (!mounted) return;
       setState(() {
-        _entries = entries;
-        _currentUserId = user?.id;
-        _isLoading = false;
+        if (global) {
+          _globalEntries = entries;
+          _isLoadingGlobal = false;
+        } else {
+          _dailyEntries = entries;
+          _isLoadingDaily = false;
+        }
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
-        _isLoading = false;
+        if (global) {
+          _globalError = e.toString();
+          _isLoadingGlobal = false;
+        } else {
+          _dailyError = e.toString();
+          _isLoadingDaily = false;
+        }
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.leaderboard_rounded,
+                  color: AppColors.deepPurple,
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'leaderboard'.tr(),
+                  style: GoogleFonts.nunito(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.deepPurple,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TabBar(
+              labelColor: AppColors.deepPurple,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: AppColors.deepPurple,
+              labelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w800),
+              tabs: [
+                Tab(text: 'leaderboard'.tr()),
+                Tab(text: 'daily_challenge'.tr()),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              children: [
+                _buildList(
+                  entries: _globalEntries,
+                  isLoading: _isLoadingGlobal,
+                  error: _globalError,
+                  onRetry: () => _loadLeaderboard(global: true),
+                ),
+                _buildList(
+                  entries: _dailyEntries,
+                  isLoading: _isLoadingDaily,
+                  error: _dailyError,
+                  onRetry: () => _loadLeaderboard(global: false),
+                  isDaily: true,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildList({
+    required List<LeaderboardEntry>? entries,
+    required bool isLoading,
+    required String? error,
+    required VoidCallback onRetry,
+    bool isDaily = false,
+  }) {
+    if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_error != null) {
+    if (error != null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -70,53 +169,45 @@ class _LeaderboardViewState extends State<LeaderboardView> {
             Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              _error!,
+              error,
               style: GoogleFonts.nunito(fontSize: 16, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadLeaderboard,
-              child: Text('retry'.tr()),
-            ),
+            ElevatedButton(onPressed: onRetry, child: Text('retry'.tr())),
           ],
         ),
       );
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-          child: Row(
-            children: [
-              const Icon(Icons.leaderboard_rounded, color: AppColors.deepPurple, size: 28),
-              const SizedBox(width: 10),
-              Text(
-                'leaderboard'.tr(),
-                style: GoogleFonts.nunito(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.deepPurple,
-                ),
-              ),
-            ],
+    final safeEntries = entries ?? const <LeaderboardEntry>[];
+    if (safeEntries.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            isDaily ? 'daily_leaderboard_empty'.tr() : 'coming_soon'.tr(),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.nunito(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey.shade600,
+            ),
           ),
         ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            itemCount: _entries!.length,
-            itemBuilder: (context, index) {
-              final entry = _entries![index];
-              return _LeaderboardTile(
-                entry: entry,
-                isCurrentUser: entry.userId == _currentUserId,
-              );
-            },
-          ),
-        ),
-      ],
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      itemCount: safeEntries.length,
+      itemBuilder: (context, index) {
+        final entry = safeEntries[index];
+        return _LeaderboardTile(
+          entry: entry,
+          isCurrentUser: entry.userId == _currentUserId,
+        );
+      },
     );
   }
 }
@@ -136,11 +227,11 @@ class _LeaderboardTile extends StatelessWidget {
   static const _bronze = Color(0xFFBF8A52);
 
   Color get _medalColor => switch (entry.rank) {
-        1 => _gold,
-        2 => _silver,
-        3 => _bronze,
-        _ => AppColors.deepPurple,
-      };
+    1 => _gold,
+    2 => _silver,
+    3 => _bronze,
+    _ => AppColors.deepPurple,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +296,9 @@ class _LeaderboardTile extends StatelessWidget {
                       style: GoogleFonts.nunito(
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
-                        color: isCurrentUser ? AppColors.deepPurple : Colors.black87,
+                        color: isCurrentUser
+                            ? AppColors.deepPurple
+                            : Colors.black87,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -213,7 +306,10 @@ class _LeaderboardTile extends StatelessWidget {
                   if (isCurrentUser) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.deepPurple,
                         borderRadius: BorderRadius.circular(20),
@@ -247,7 +343,9 @@ class _LeaderboardTile extends StatelessWidget {
                   style: GoogleFonts.nunito(
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
-                    color: isCurrentUser ? AppColors.deepPurple : Colors.black87,
+                    color: isCurrentUser
+                        ? AppColors.deepPurple
+                        : Colors.black87,
                   ),
                 ),
                 const SizedBox(width: 2),
@@ -275,7 +373,11 @@ class _Avatar extends StatelessWidget {
   final bool blurred;
   final Color? medalColor;
 
-  const _Avatar({required this.photoUrl, required this.blurred, this.medalColor});
+  const _Avatar({
+    required this.photoUrl,
+    required this.blurred,
+    this.medalColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -288,7 +390,8 @@ class _Avatar extends StatelessWidget {
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorWidget: (_, __, ___) => _AvatarFallback(size: size, color: medalColor),
+        errorWidget: (_, __, ___) =>
+            _AvatarFallback(size: size, color: medalColor),
       );
       if (blurred) {
         image = ImageFiltered(
@@ -307,7 +410,10 @@ class _Avatar extends StatelessWidget {
         shape: BoxShape.circle,
         border: medalColor != null
             ? Border.all(color: medalColor!, width: 2)
-            : Border.all(color: AppColors.deepPurple.withValues(alpha: 0.15), width: 1.5),
+            : Border.all(
+                color: AppColors.deepPurple.withValues(alpha: 0.15),
+                width: 1.5,
+              ),
       ),
       child: ClipOval(child: image),
     );
@@ -350,20 +456,20 @@ class _MedalIcon extends StatelessWidget {
 
     final (icon, lightColor, darkColor) = switch (rank) {
       1 => (
-          Icons.emoji_events_rounded,
-          const Color(0xFFFFD54F),
-          const Color(0xFFBF6F00),
-        ),
+        Icons.emoji_events_rounded,
+        const Color(0xFFFFD54F),
+        const Color(0xFFBF6F00),
+      ),
       2 => (
-          Icons.military_tech_rounded,
-          const Color(0xFFECEFF1),
-          const Color(0xFF546E7A),
-        ),
+        Icons.military_tech_rounded,
+        const Color(0xFFECEFF1),
+        const Color(0xFF546E7A),
+      ),
       _ => (
-          Icons.workspace_premium_rounded,
-          const Color(0xFFD7A96A),
-          const Color(0xFF7B4A1E),
-        ),
+        Icons.workspace_premium_rounded,
+        const Color(0xFFD7A96A),
+        const Color(0xFF7B4A1E),
+      ),
     };
 
     return Container(
