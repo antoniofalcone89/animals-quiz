@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/achievement.dart';
 import '../theme/app_theme.dart';
 
-/// Shows a bottom-sliding achievement-unlocked toast.
+/// Shows a top-sliding achievement-unlocked toast.
 /// Auto-dismisses after [displayDuration].
 void showAchievementToast(
   BuildContext context,
@@ -64,7 +64,7 @@ class _AchievementToastOverlayState extends State<_AchievementToastOverlay>
     );
 
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 1.4),
+      begin: const Offset(0, -1.4),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
@@ -73,9 +73,10 @@ class _AchievementToastOverlayState extends State<_AchievementToastOverlay>
       curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
     );
 
-    _scaleAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 0.85,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
 
@@ -99,10 +100,10 @@ class _AchievementToastOverlayState extends State<_AchievementToastOverlay>
   @override
   Widget build(BuildContext context) {
     final a = widget.achievement;
-    final bottomPad = MediaQuery.of(context).padding.bottom;
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Positioned(
-      bottom: bottomPad + 90,
+      top: topPad + 14,
       left: 20,
       right: 20,
       child: GestureDetector(
@@ -176,10 +177,7 @@ class _ToastCardState extends State<_ToastCard>
               offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(
-            color: color.withValues(alpha: 0.25),
-            width: 1.5,
-          ),
+          border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
         ),
         child: Row(
           children: [
@@ -263,11 +261,7 @@ class _ToastCardState extends State<_ToastCard>
               ),
             ),
             // ── Dismiss hint ─────────────────────────────────
-            Icon(
-              Icons.close_rounded,
-              size: 18,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.close_rounded, size: 18, color: Colors.grey[400]),
           ],
         ),
       ),
