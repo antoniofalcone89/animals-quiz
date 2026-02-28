@@ -50,4 +50,8 @@ abstract class QuizRepository {
   /// Dev-only hook for local testing.
   /// Default no-op for production repositories.
   void resetStreakDateForDebug() {}
+
+  /// Dev-only hook for resetting local progress/state in testing flows.
+  /// Default no-op for production repositories.
+  Future<void> resetAllForDebug() async {}
 }

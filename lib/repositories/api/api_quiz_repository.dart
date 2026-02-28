@@ -16,6 +16,11 @@ class ApiQuizRepository implements QuizRepository {
   void resetStreakDateForDebug() {}
 
   @override
+  Future<void> resetAllForDebug() async {
+    await _client.post('/users/me/reset');
+  }
+
+  @override
   Future<List<Level>> getLevels() async {
     final json = await _client.get('/levels');
     final list = json['levels'] as List<dynamic>;

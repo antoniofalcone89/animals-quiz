@@ -203,6 +203,20 @@ class MockQuizRepository implements QuizRepository {
   }
 
   @override
+  Future<void> resetAllForDebug() async {
+    _progress.clear();
+    _hints.clear();
+    _letters.clear();
+    _coins = 0;
+    _points = 0;
+    _currentStreak = 0;
+    _lastActivityDate = null;
+    _challengeDateKey = null;
+    _challengeCorrectIndexes = <int>{};
+    _challengeScore = 0;
+  }
+
+  @override
   Future<Map<int, List<bool>>> getUserProgress() async {
     return Map.unmodifiable(_progress);
   }

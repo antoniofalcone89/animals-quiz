@@ -580,7 +580,13 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _next() {
-    if (_currentIndex + 1 >= _questionOrder.length) {
+    final reachedEndOfSequence = _currentIndex + 1 >= _questionOrder.length;
+    final levelCompleted = widget.isDailyChallenge
+        ? (_initialLevelCorrect + _sessionCorrect) >= _questionOrder.length
+        : widget.gameState.getLevelProgress(widget.level.id) >= 1.0 ||
+              (_initialLevelCorrect + _sessionCorrect) >= _questionOrder.length;
+
+    if (reachedEndOfSequence || levelCompleted) {
       setState(() => _showResults = true);
       return;
     }

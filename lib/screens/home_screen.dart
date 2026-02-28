@@ -1,9 +1,12 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/achievement.dart';
 import '../models/game_state.dart';
 import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/achievement_toast.dart';
 import '../widgets/home_header.dart';
 import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
@@ -22,12 +25,26 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const String _seenAchievementsKey = 'seen_achievements_v1';
+
   int _currentIndex = 0;
+
+  /// IDs of achievements already known to be unlocked — used to detect new ones.
+  final Set<String> _knownUnlockedIds = {};
+  final Set<String> _seenAchievementIds = {};
+  bool _seenAchievementsLoaded = false;
+
+  /// While loading initial progress we skip toasts (avoid false positives).
+  bool _initialLoadDone = false;
+
+  /// Count of newly unlocked achievements not yet seen on the Profile tab.
+  int _unseenAchievementsCount = 0;
 
   @override
   void initState() {
     super.initState();
     widget.gameState.addListener(_onStateChanged);
+    _loadSeenAchievements();
     widget.gameState.loadLevels();
     widget.gameState.loadProgress();
     widget.gameState.loadTodayChallenge();
@@ -39,8 +56,106 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  List<Achievement> _computeAchievements() {
+    final gs = widget.gameState;
+    return AchievementService.compute(
+      totalPoints: gs.totalPoints,
+      totalCoins: gs.totalCoins,
+      currentStreak: gs.currentStreak,
+      levelProgress: gs.levelProgress,
+      hintsProgress: gs.hintsProgress,
+      totalLevels: gs.levels.length,
+    );
+  }
+
+  void _seedKnownUnlockedAchievements() {
+    final achievements = _computeAchievements();
+    final unlockedIds = achievements
+        .where((a) => a.isUnlocked)
+        .map((a) => a.id)
+        .toSet();
+
+    _knownUnlockedIds
+      ..clear()
+      ..addAll(unlockedIds);
+
+    final unseen = unlockedIds.difference(_seenAchievementIds).length;
+    _unseenAchievementsCount = _currentIndex == 2 ? 0 : unseen;
+  }
+
+  void _initializeAchievementTrackingIfReady() {
+    if (_initialLoadDone) return;
+    if (!_seenAchievementsLoaded) return;
+    if (widget.gameState.isStatsLoading) return;
+
+    _seedKnownUnlockedAchievements();
+    _initialLoadDone = true;
+  }
+
+  Future<void> _loadSeenAchievements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_seenAchievementsKey) ?? const <String>[];
+    if (!mounted) return;
+
+    setState(() {
+      _seenAchievementIds
+        ..clear()
+        ..addAll(ids);
+      _seenAchievementsLoaded = true;
+      _initializeAchievementTrackingIfReady();
+    });
+  }
+
+  Future<void> _persistSeenAchievements() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _seenAchievementsKey,
+      _seenAchievementIds.toList()..sort(),
+    );
+  }
+
+  Future<void> _markAllUnlockedAchievementsAsSeen() async {
+    final unlockedIds = _computeAchievements()
+        .where((a) => a.isUnlocked)
+        .map((a) => a.id)
+        .toSet();
+
+    _seenAchievementIds.addAll(unlockedIds);
+    _unseenAchievementsCount = 0;
+    await _persistSeenAchievements();
+  }
+
   void _onStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+
+    _initializeAchievementTrackingIfReady();
+
+    if (_initialLoadDone) {
+      _checkNewAchievements();
+    }
+    setState(() {});
+  }
+
+  void _checkNewAchievements() {
+    final achievements = _computeAchievements();
+    for (final a in achievements) {
+      if (a.isUnlocked && !_knownUnlockedIds.contains(a.id)) {
+        _knownUnlockedIds.add(a.id);
+
+        if (_currentIndex == 2) {
+          _seenAchievementIds.add(a.id);
+          _persistSeenAchievements();
+          continue;
+        }
+
+        // Only count as unseen if the user is not currently on the Profile tab.
+        _unseenAchievementsCount++;
+        // Delay slightly so the UI frame settles before the toast appears.
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) showAchievementToast(context, a);
+        });
+      }
+    }
   }
 
   void _handleLocaleChanged(String locale) {
@@ -108,6 +223,30 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  Future<void> _handleDebugResetLevels() async {
+    try {
+      await widget.gameState.debugResetLevelsAndAchievements();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reset failed')));
+      return;
+    }
+
+    _knownUnlockedIds.clear();
+    _seenAchievementIds.clear();
+    _unseenAchievementsCount = 0;
+
+    await _persistSeenAchievements();
+    if (!mounted) return;
+    setState(() {});
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Levels and badges reset')));
+  }
+
   Future<void> _openDailyChallenge() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -140,11 +279,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 onLinkWithGoogle: _handleLinkWithGoogle,
                 onLinkWithEmail: _handleLinkWithEmail,
                 onDebugForceStreakBonus: _handleDebugForceStreakBonus,
+                onDebugResetLevels: _handleDebugResetLevels,
+                levelProgress: widget.gameState.levelProgress,
+                hintsProgress: widget.gameState.hintsProgress,
+                totalLevels: widget.gameState.levels.length,
               ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) async {
+          if (i == 2) {
+            await _markAllUnlockedAchievementsAsSeen();
+            if (!mounted) return;
+            setState(() => _currentIndex = i);
+          } else {
+            setState(() => _currentIndex = i);
+          }
+        },
         selectedItemColor: AppColors.deepPurple,
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
@@ -158,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'leaderboard'.tr(),
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.person_rounded),
+            icon: _ProfileNavIcon(unseenCount: _unseenAchievementsCount),
             label: 'profile'.tr(),
           ),
         ],
@@ -509,6 +660,95 @@ class _ChallengeButtonState extends State<_ChallengeButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile nav icon with animated badge dot
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProfileNavIcon extends StatefulWidget {
+  final int unseenCount;
+  const _ProfileNavIcon({required this.unseenCount});
+
+  @override
+  State<_ProfileNavIcon> createState() => _ProfileNavIconState();
+}
+
+class _ProfileNavIconState extends State<_ProfileNavIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.35).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    if (widget.unseenCount > 0) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ProfileNavIcon old) {
+    super.didUpdateWidget(old);
+    if (widget.unseenCount > 0 && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (widget.unseenCount == 0 && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.person_rounded),
+        if (widget.unseenCount > 0)
+          Positioned(
+            top: -4,
+            right: -6,
+            child: AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (_, child) =>
+                  Transform.scale(scale: _pulseAnim.value, child: child),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE53935),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    widget.unseenCount > 9 ? '9+' : '${widget.unseenCount}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

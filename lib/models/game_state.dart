@@ -221,6 +221,33 @@ class GameState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Dev-only: reset levels and achievement-driving stats for testing.
+  Future<void> debugResetLevelsAndAchievements() async {
+    await _quizRepository.resetAllForDebug();
+
+    for (final level in _levels) {
+      _levelProgress[level.id] = List<bool>.filled(level.animals.length, false);
+      _hintsProgress[level.id] = List<int>.filled(level.animals.length, 0);
+      _lettersProgress[level.id] = List<int>.filled(level.animals.length, 0);
+    }
+
+    _totalCoins = 0;
+    _totalPoints = 0;
+    _currentStreak = 0;
+    _lastActivityDate = null;
+
+    final challenge = _todayChallenge;
+    if (challenge != null) {
+      _todayChallenge = challenge.copyWith(
+        progress: 0,
+        completed: false,
+        score: 0,
+      );
+    }
+
+    notifyListeners();
+  }
+
   Future<AnswerResult> submitAnswer(
     int levelId,
     int animalIndex,

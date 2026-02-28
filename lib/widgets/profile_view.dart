@@ -3,8 +3,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/env.dart';
+import '../models/achievement.dart';
 import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
+import 'achievements_view.dart';
 import 'coin_badge.dart';
 import 'shimmer_loading.dart';
 
@@ -21,6 +23,10 @@ class ProfileView extends StatelessWidget {
   final VoidCallback? onLinkWithGoogle;
   final Future<void> Function(String email, String password)? onLinkWithEmail;
   final VoidCallback? onDebugForceStreakBonus;
+  final VoidCallback? onDebugResetLevels;
+  final Map<int, List<bool>> levelProgress;
+  final Map<int, List<int>> hintsProgress;
+  final int totalLevels;
 
   const ProfileView({
     super.key,
@@ -36,6 +42,10 @@ class ProfileView extends StatelessWidget {
     this.onLinkWithGoogle,
     this.onLinkWithEmail,
     this.onDebugForceStreakBonus,
+    this.onDebugResetLevels,
+    this.levelProgress = const {},
+    this.hintsProgress = const {},
+    this.totalLevels = 6,
   });
 
   void _showLinkEmailDialog(BuildContext context) {
@@ -153,6 +163,49 @@ class ProfileView extends StatelessWidget {
     );
   }
 
+  Future<void> _showResetLevelsDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Reset Levels',
+          style: GoogleFonts.nunito(
+            fontWeight: FontWeight.w800,
+            color: AppColors.deepPurple,
+          ),
+        ),
+        content: Text(
+          'This will reset levels, badges, points, coins and streak. Continue?',
+          style: GoogleFonts.nunito(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+            height: 1.35,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('cancel'.tr()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      onDebugResetLevels?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentLocale = context.locale;
@@ -261,7 +314,36 @@ class ProfileView extends StatelessWidget {
                     ],
                   ),
                 ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+
+          // ── Achievements section ────────────────────────────────────
+          if (!isStatsLoading)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: AchievementsView(
+                achievements: AchievementService.compute(
+                  totalPoints: totalPoints,
+                  totalCoins: totalCoins,
+                  currentStreak: currentStreak,
+                  levelProgress: levelProgress,
+                  hintsProgress: hintsProgress,
+                  totalLevels: totalLevels,
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 24),
 
           // Guest account linking section
           if (isGuest) ...[
@@ -446,6 +528,34 @@ class ProfileView extends StatelessWidget {
             ),
           ),
           if (Env.debugUnlockAll) ...[
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                leading: const Icon(
+                  Icons.restart_alt_rounded,
+                  color: Colors.orange,
+                ),
+                title: Text(
+                  'Reset Levels',
+                  style: GoogleFonts.nunito(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.orange,
+                  ),
+                ),
+                onTap: () => _showResetLevelsDialog(context),
+              ),
+            ),
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
