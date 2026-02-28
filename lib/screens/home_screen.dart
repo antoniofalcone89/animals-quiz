@@ -7,6 +7,7 @@ import '../models/game_state.dart';
 import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
 import '../widgets/achievement_toast.dart';
+import '../widgets/banner_ad_widget.dart';
 import '../widgets/home_header.dart';
 import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
@@ -285,7 +286,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 totalLevels: widget.gameState.levels.length,
               ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const BannerAdWidget(),
+          BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (i) async {
           if (i == 2) {
@@ -312,6 +317,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: _ProfileNavIcon(unseenCount: _unseenAchievementsCount),
             label: 'profile'.tr(),
           ),
+        ],
+      ),
         ],
       ),
     );
