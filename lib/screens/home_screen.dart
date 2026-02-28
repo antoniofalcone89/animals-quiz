@@ -31,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// While loading initial progress we skip toasts (avoid false positives).
   bool _initialLoadDone = false;
+  bool _wasStatsLoading = true;
 
   /// Count of newly unlocked achievements not yet seen on the Profile tab.
   int _unseenAchievementsCount = 0;
@@ -62,8 +63,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _seedKnownUnlockedAchievements() {
+    final achievements = _computeAchievements();
+    _knownUnlockedIds
+      ..clear()
+      ..addAll(achievements.where((a) => a.isUnlocked).map((a) => a.id));
+  }
+
   void _onStateChanged() {
     if (!mounted) return;
+
+    final isStatsLoading = widget.gameState.isStatsLoading;
+    if (_wasStatsLoading && !isStatsLoading && !_initialLoadDone) {
+      _seedKnownUnlockedAchievements();
+      _initialLoadDone = true;
+    }
+    _wasStatsLoading = isStatsLoading;
+
     if (_initialLoadDone) {
       _checkNewAchievements();
     }
@@ -630,10 +646,8 @@ class _ProfileNavIconState extends State<_ProfileNavIcon>
             right: -6,
             child: AnimatedBuilder(
               animation: _pulseAnim,
-              builder: (_, child) => Transform.scale(
-                scale: _pulseAnim.value,
-                child: child,
-              ),
+              builder: (_, child) =>
+                  Transform.scale(scale: _pulseAnim.value, child: child),
               child: Container(
                 constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 3),
