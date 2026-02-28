@@ -175,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
             totalCoins: widget.gameState.totalCoins,
             totalPoints: widget.gameState.totalPoints,
             currentStreak: widget.gameState.currentStreak,
+            isStreakBroken: widget.gameState.isStreakBroken,
             isStatsLoading: true,
           ),
           const Expanded(child: ClipRect(child: LevelGridSkeleton())),
@@ -215,6 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
           totalCoins: widget.gameState.totalCoins,
           totalPoints: widget.gameState.totalPoints,
           currentStreak: widget.gameState.currentStreak,
+          isStreakBroken: widget.gameState.isStreakBroken,
           isStatsLoading: widget.gameState.isStatsLoading,
         ),
         if (widget.gameState.isStreakBroken)
@@ -329,10 +331,9 @@ class _DailyChallengeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (isCompleted
-                      ? const Color(0xFF2E7D32)
-                      : AppColors.deepPurple)
-                  .withValues(alpha: 0.35),
+              color:
+                  (isCompleted ? const Color(0xFF2E7D32) : AppColors.deepPurple)
+                      .withValues(alpha: 0.35),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -378,7 +379,8 @@ class _DailyChallengeCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       )
-                    else if (gameState.challengeError != null && challenge == null)
+                    else if (gameState.challengeError != null &&
+                        challenge == null)
                       Text(
                         gameState.challengeError!,
                         maxLines: 1,
@@ -412,10 +414,15 @@ class _DailyChallengeCard extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: challenge.progress / challenge.animals.length,
+                            value:
+                                challenge.progress / challenge.animals.length,
                             minHeight: 5,
-                            backgroundColor: Colors.white.withValues(alpha: 0.25),
-                            valueColor: const AlwaysStoppedAnimation(Colors.white),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.25,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ],

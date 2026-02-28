@@ -14,6 +14,7 @@ class HomeHeader extends StatefulWidget {
   final int totalCoins;
   final int totalPoints;
   final int currentStreak;
+  final bool isStreakBroken;
   final bool isStatsLoading;
 
   const HomeHeader({
@@ -22,6 +23,7 @@ class HomeHeader extends StatefulWidget {
     required this.totalCoins,
     required this.totalPoints,
     required this.currentStreak,
+    this.isStreakBroken = false,
     this.isStatsLoading = false,
   });
 
@@ -96,23 +98,28 @@ class _HomeHeaderState extends State<HomeHeader> with TickerProviderStateMixin {
                 widget.isStatsLoading
                     ? _statsBadgeShimmer()
                     : _PressableWrapper(
-                        onTap: () => _showBadgeInfo(context, _BadgeInfoType.coins),
+                        onTap: () =>
+                            _showBadgeInfo(context, _BadgeInfoType.coins),
                         child: CoinBadge(coins: widget.totalCoins),
                       ),
                 const SizedBox(width: 8),
                 widget.isStatsLoading
                     ? _statsBadgeShimmer()
                     : _PressableWrapper(
-                        onTap: () => _showBadgeInfo(context, _BadgeInfoType.points),
+                        onTap: () =>
+                            _showBadgeInfo(context, _BadgeInfoType.points),
                         child: PointsBadge(points: widget.totalPoints),
                       ),
                 const SizedBox(width: 8),
                 widget.isStatsLoading
                     ? _statsBadgeShimmer()
                     : _PressableWrapper(
-                        onTap: () => _showBadgeInfo(context, _BadgeInfoType.streak),
+                        onTap: () =>
+                            _showBadgeInfo(context, _BadgeInfoType.streak),
                         child: _StreakBadge(
-                          streak: widget.currentStreak,
+                          streak: widget.isStreakBroken
+                              ? 0
+                              : widget.currentStreak,
                           pulse: _streakPulseController,
                           showNewLabel: _showStreakNew,
                         ),
@@ -231,7 +238,11 @@ class _BadgeInfoSheetState extends State<_BadgeInfoSheet>
         body = 'info_points_body'.tr();
       case _BadgeInfoType.streak:
         accentColor = Colors.orange;
-        icon = Icon(Icons.local_fire_department_rounded, size: 40, color: accentColor);
+        icon = Icon(
+          Icons.local_fire_department_rounded,
+          size: 40,
+          color: accentColor,
+        );
         title = 'info_streak_title'.tr();
         body = 'info_streak_body'.tr();
     }
@@ -276,9 +287,7 @@ class _BadgeInfoSheetState extends State<_BadgeInfoSheet>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: accentColor.withValues(alpha: 0.12),
-                  border: Border.all(
-                    color: accentColor.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.3)),
                 ),
                 child: Center(child: icon),
               ),
