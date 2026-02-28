@@ -137,6 +137,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _checkNewAchievements() {
+    // Skip entirely while the daily challenge is active.
+    // Achievements are re-evaluated when the user returns to this screen,
+    // so no badge is awarded for stats gained during the daily challenge.
+    if (widget.gameState.isDailyChallengeActive) return;
+
     final achievements = _computeAchievements();
     for (final a in achievements) {
       if (a.isUnlocked && !_knownUnlockedIds.contains(a.id)) {
@@ -150,7 +155,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Only count as unseen if the user is not currently on the Profile tab.
         _unseenAchievementsCount++;
-        // Delay slightly so the UI frame settles before the toast appears.
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) showAchievementToast(context, a);
         });

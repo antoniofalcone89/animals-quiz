@@ -45,6 +45,7 @@ class ApiQuizRepository implements QuizRepository {
     required int animalIndex,
     required String answer,
     bool adRevealed = false,
+    double comboMultiplier = 1.0,
   }) async {
     final json = await _client.post(
       '/quiz/answer',
@@ -53,6 +54,7 @@ class ApiQuizRepository implements QuizRepository {
         'animalIndex': animalIndex,
         'answer': answer,
         if (adRevealed) 'adRevealed': true,
+        if (comboMultiplier > 1.0) 'comboMultiplier': comboMultiplier,
       },
     );
     return AnswerResult.fromJson(json);

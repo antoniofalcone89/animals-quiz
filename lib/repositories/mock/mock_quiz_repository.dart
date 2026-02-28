@@ -60,6 +60,7 @@ class MockQuizRepository implements QuizRepository {
     required int animalIndex,
     required String answer,
     bool adRevealed = false,
+    double comboMultiplier = 1.0,
   }) async {
     final level = quizLevels.firstWhere((l) => l.id == levelId);
     final animal = level.animals[animalIndex];
@@ -123,6 +124,7 @@ class MockQuizRepository implements QuizRepository {
       currentStreak: _currentStreak,
       lastActivityDate: _lastActivityDate,
       streakBonusCoins: streakBonusCoins,
+      comboMultiplier: comboMultiplier,
     );
   }
 

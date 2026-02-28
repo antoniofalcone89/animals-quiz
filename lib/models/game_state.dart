@@ -67,6 +67,7 @@ class GameState extends ChangeNotifier {
   bool _isLoading = false;
   bool _isStatsLoading = true;
   bool _isChallengeLoading = false;
+  bool _isDailyChallengeActive = false;
   String? _error;
   String? _challengeError;
   bool _debugForceStreakBonus = false;
@@ -100,6 +101,8 @@ class GameState extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isStatsLoading => _isStatsLoading;
   bool get isChallengeLoading => _isChallengeLoading;
+  bool get isDailyChallengeActive => _isDailyChallengeActive;
+  set isDailyChallengeActive(bool value) => _isDailyChallengeActive = value;
   String? get error => _error;
   String? get challengeError => _challengeError;
   DailyChallenge? get todayChallenge => _todayChallenge;
@@ -253,12 +256,14 @@ class GameState extends ChangeNotifier {
     int animalIndex,
     String answer, {
     bool adRevealed = false,
+    double comboMultiplier = 1.0,
   }) async {
     var result = await _quizRepository.submitAnswer(
       levelId: levelId,
       animalIndex: animalIndex,
       answer: answer,
       adRevealed: adRevealed,
+      comboMultiplier: comboMultiplier,
     );
 
     if (result.correct && _debugForceStreakBonus) {

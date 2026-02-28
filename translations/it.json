@@ -143,5 +143,7 @@
   "achievement_level_3_desc": "Completa tutti gli animali del Livello 3.",
   "achievement_daily_title": "Giocatore Quotidiano",
   "achievement_daily_desc": "Accedi e gioca in giorni consecutivi.",
-  "achievement_toast_label": "OBIETTIVO SBLOCCATO"
+  "achievement_toast_label": "OBIETTIVO SBLOCCATO",
+  "combo": "COMBO",
+  "combo_bonus": "Bonus combo! ×{}"
 }

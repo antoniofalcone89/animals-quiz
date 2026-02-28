@@ -17,6 +17,7 @@ abstract class QuizRepository {
     required int animalIndex,
     required String answer,
     bool adRevealed = false,
+    double comboMultiplier = 1.0,
   });
 
   Future<AnswerResult> submitDailyChallengeAnswer({

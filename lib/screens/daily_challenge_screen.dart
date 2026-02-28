@@ -23,6 +23,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   @override
   void initState() {
     super.initState();
+    widget.gameState.isDailyChallengeActive = true;
     widget.gameState.addListener(_onStateChanged);
     if (widget.gameState.todayChallenge == null) {
       widget.gameState.loadTodayChallenge();
@@ -52,6 +53,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
 
   @override
   void dispose() {
+    widget.gameState.isDailyChallengeActive = false;
     widget.gameState.removeListener(_onStateChanged);
     super.dispose();
   }

@@ -143,5 +143,7 @@
   "achievement_level_3_desc": "Complete all animals in Level 3.",
   "achievement_daily_title": "Daily Player",
   "achievement_daily_desc": "Log in and play on consecutive days.",
-  "achievement_toast_label": "ACHIEVEMENT UNLOCKED"
+  "achievement_toast_label": "ACHIEVEMENT UNLOCKED",
+  "combo": "COMBO",
+  "combo_bonus": "Combo bonus! ×{}"
 }

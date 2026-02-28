@@ -66,6 +66,8 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _isShowingRewardedAd = false;
   bool _showTutorial = false;
   int _streakBonusCoins = 0;
+  int _currentCombo = 0;
+  bool _showComboOverlay = false;
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
@@ -287,6 +289,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<AnswerResult> _submitCurrentAnswer(
     String answer, {
     bool adRevealed = false,
+    double comboMultiplier = 1.0,
   }) {
     final submitOverride = widget.submitAnswerOverride;
     if (submitOverride != null) {
@@ -302,6 +305,7 @@ class _QuizScreenState extends State<QuizScreen> {
       _currentAnimalIndex,
       answer,
       adRevealed: adRevealed,
+      comboMultiplier: comboMultiplier,
     );
   }
 
@@ -379,7 +383,7 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
       );
     } else {
-      setState(() {});
+      setState(() => _currentCombo = 0);
     }
   }
 
@@ -414,7 +418,7 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
       );
     } else {
-      setState(() {});
+      setState(() => _currentCombo = 0);
       final keyboardVisible = MediaQuery.viewInsetsOf(context).bottom > 100;
       if (keyboardVisible) {
         _showHintsSheet(animal.hints, result.hintsRevealed);
@@ -501,6 +505,7 @@ class _QuizScreenState extends State<QuizScreen> {
         _sessionCoins += result.coinsAwarded;
         _sessionCorrect++;
         _currentFunFact = funFact;
+        _currentCombo = 0;
       });
     });
   }
@@ -542,17 +547,23 @@ class _QuizScreenState extends State<QuizScreen> {
         funFact = animal.funFacts[Random().nextInt(animal.funFacts.length)];
       }
       _focusNode.unfocus();
+      final noHintsUsed = _hintsRevealed == 0 && _lettersRevealed == 0;
+      final newCombo =
+          !widget.isDailyChallenge && noHintsUsed ? _currentCombo + 1 : 0;
       setState(() {
         _answered = true;
         _revealedName = animal.name;
         _sessionCorrect++;
         _currentFunFact = funFact;
+        _currentCombo = newCombo;
       });
+      if (newCombo >= 2) _triggerComboOverlay();
 
+      final multiplier = _comboMultiplier;
       // Persist to backend in the background; update coins when it responds.
       // On network failure we swallow silently — progress will appear unguessed
       // on next load, which is acceptable vs. delaying feedback every time.
-      _submitCurrentAnswer(guess)
+      _submitCurrentAnswer(guess, comboMultiplier: multiplier)
           .then((result) {
             if (!mounted) return;
             setState(() => _sessionCoins += result.coinsAwarded);
@@ -562,7 +573,10 @@ class _QuizScreenState extends State<QuizScreen> {
           })
           .catchError((_) {});
     } else {
-      setState(() => _showWrongMessage = true);
+      setState(() {
+        _showWrongMessage = true;
+        _currentCombo = 0;
+      });
       Future.delayed(const Duration(milliseconds: 1400), () {
         if (!mounted) return;
         _controller.clear();
@@ -570,6 +584,18 @@ class _QuizScreenState extends State<QuizScreen> {
         setState(() => _showWrongMessage = false);
       });
     }
+  }
+
+  double get _comboMultiplier {
+    if (_currentCombo < 2) return 1.0;
+    return (1.0 + (_currentCombo - 1) * 0.2).clamp(1.0, 2.0);
+  }
+
+  void _triggerComboOverlay() {
+    setState(() => _showComboOverlay = true);
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _showComboOverlay = false);
+    });
   }
 
   void _showStreakBonus(int bonus) {
@@ -696,7 +722,9 @@ class _QuizScreenState extends State<QuizScreen> {
           // The panel uses mainAxisSize.min so it only takes what it needs,
           // leaving the image zone as large as possible at all times.
           Expanded(
-            child: GestureDetector(
+            child: Stack(
+              children: [
+                GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
                 if (_focusNode.hasFocus) _focusNode.unfocus();
@@ -719,6 +747,20 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                 ),
               ),
+              ),
+                if (_showComboOverlay)
+                  Positioned(
+                    top: 16,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _ComboOverlay(
+                        combo: _currentCombo,
+                        multiplier: _comboMultiplier,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -1075,6 +1117,135 @@ class _StreakBonusToastState extends State<_StreakBonusToast>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Combo overlay — bursts in with scale + fade, displays "COMBO ×N" badge
+// ---------------------------------------------------------------------------
+
+class _ComboOverlay extends StatefulWidget {
+  final int combo;
+  final double multiplier;
+
+  const _ComboOverlay({required this.combo, required this.multiplier});
+
+  @override
+  State<_ComboOverlay> createState() => _ComboOverlayState();
+}
+
+class _ComboOverlayState extends State<_ComboOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    // Timeline: 0–150ms burst in, 150–900ms hold, 900–1400ms fade out
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..forward();
+
+    _scale = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.4, end: 1.1)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 150,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.1, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 100,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 650),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.8)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 500,
+      ),
+    ]).animate(_ctrl);
+
+    _opacity = TweenSequence([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 150,
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 750),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 500,
+      ),
+    ]).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Color get _comboColor {
+    if (widget.combo >= 5) return const Color(0xFFE53935); // red — max heat
+    if (widget.combo >= 4) return const Color(0xFFFF6F00); // deep orange
+    if (widget.combo >= 3) return const Color(0xFFF57C00); // orange
+    return const Color(0xFFFFB300); // amber — combo ×2
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final multiplierLabel =
+        widget.multiplier == widget.multiplier.truncateToDouble()
+            ? '×${widget.multiplier.toInt()}'
+            : '×${widget.multiplier.toStringAsFixed(1)}';
+
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) => Opacity(
+        opacity: _opacity.value,
+        child: Transform.scale(scale: _scale.value, child: child),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: _comboColor,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: _comboColor.withValues(alpha: 0.5),
+              blurRadius: 18,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.bolt_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'COMBO $multiplierLabel',
+              style: GoogleFonts.nunito(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                letterSpacing: 1.2,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ],
         ),
       ),
     );

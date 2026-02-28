@@ -7,6 +7,7 @@ class AnswerResult {
   final int? currentStreak;
   final DateTime? lastActivityDate;
   final int streakBonusCoins;
+  final double comboMultiplier;
 
   const AnswerResult({
     required this.correct,
@@ -17,6 +18,7 @@ class AnswerResult {
     this.currentStreak,
     this.lastActivityDate,
     this.streakBonusCoins = 0,
+    this.comboMultiplier = 1.0,
   });
 
   factory AnswerResult.fromJson(Map<String, dynamic> json) {
@@ -35,6 +37,7 @@ class AnswerResult {
           ? DateTime.tryParse(lastActivityRaw)
           : null,
       streakBonusCoins: (json['streakBonusCoins'] as int?) ?? 0,
+      comboMultiplier: (json['comboMultiplier'] as num?)?.toDouble() ?? 1.0,
     );
   }
 }
