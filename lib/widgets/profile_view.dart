@@ -3,8 +3,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/env.dart';
+import '../models/achievement.dart';
 import '../services/tutorial_service.dart';
 import '../theme/app_theme.dart';
+import 'achievements_view.dart';
 import 'coin_badge.dart';
 import 'shimmer_loading.dart';
 
@@ -21,6 +23,9 @@ class ProfileView extends StatelessWidget {
   final VoidCallback? onLinkWithGoogle;
   final Future<void> Function(String email, String password)? onLinkWithEmail;
   final VoidCallback? onDebugForceStreakBonus;
+  final Map<int, List<bool>> levelProgress;
+  final Map<int, List<int>> hintsProgress;
+  final int totalLevels;
 
   const ProfileView({
     super.key,
@@ -36,6 +41,9 @@ class ProfileView extends StatelessWidget {
     this.onLinkWithGoogle,
     this.onLinkWithEmail,
     this.onDebugForceStreakBonus,
+    this.levelProgress = const {},
+    this.hintsProgress = const {},
+    this.totalLevels = 6,
   });
 
   void _showLinkEmailDialog(BuildContext context) {
@@ -261,7 +269,36 @@ class ProfileView extends StatelessWidget {
                     ],
                   ),
                 ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+
+          // ── Achievements section ────────────────────────────────────
+          if (!isStatsLoading)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: AchievementsView(
+                achievements: AchievementService.compute(
+                  totalPoints: totalPoints,
+                  totalCoins: totalCoins,
+                  currentStreak: currentStreak,
+                  levelProgress: levelProgress,
+                  hintsProgress: hintsProgress,
+                  totalLevels: totalLevels,
+                ),
+              ),
+            ),
+
+          const SizedBox(height: 24),
 
           // Guest account linking section
           if (isGuest) ...[

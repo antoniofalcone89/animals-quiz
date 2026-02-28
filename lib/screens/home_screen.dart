@@ -1,9 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/achievement.dart';
 import '../models/game_state.dart';
 import '../services/service_locator.dart';
 import '../theme/app_theme.dart';
+import '../widgets/achievement_toast.dart';
 import '../widgets/home_header.dart';
 import '../widgets/leaderboard_view.dart';
 import '../widgets/level_grid.dart';
@@ -24,6 +26,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
+  /// IDs of achievements already known to be unlocked — used to detect new ones.
+  final Set<String> _knownUnlockedIds = {};
+
+  /// While loading initial progress we skip toasts (avoid false positives).
+  bool _initialLoadDone = false;
+
+  /// Count of newly unlocked achievements not yet seen on the Profile tab.
+  int _unseenAchievementsCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -39,8 +50,41 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  List<Achievement> _computeAchievements() {
+    final gs = widget.gameState;
+    return AchievementService.compute(
+      totalPoints: gs.totalPoints,
+      totalCoins: gs.totalCoins,
+      currentStreak: gs.currentStreak,
+      levelProgress: gs.levelProgress,
+      hintsProgress: gs.hintsProgress,
+      totalLevels: gs.levels.length,
+    );
+  }
+
   void _onStateChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (_initialLoadDone) {
+      _checkNewAchievements();
+    }
+    setState(() {});
+  }
+
+  void _checkNewAchievements() {
+    final achievements = _computeAchievements();
+    for (final a in achievements) {
+      if (a.isUnlocked && !_knownUnlockedIds.contains(a.id)) {
+        _knownUnlockedIds.add(a.id);
+        // Only count as unseen if the user is not currently on the Profile tab.
+        if (_currentIndex != 2) {
+          _unseenAchievementsCount++;
+        }
+        // Delay slightly so the UI frame settles before the toast appears.
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) showAchievementToast(context, a);
+        });
+      }
+    }
   }
 
   void _handleLocaleChanged(String locale) {
@@ -140,11 +184,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 onLinkWithGoogle: _handleLinkWithGoogle,
                 onLinkWithEmail: _handleLinkWithEmail,
                 onDebugForceStreakBonus: _handleDebugForceStreakBonus,
+                levelProgress: widget.gameState.levelProgress,
+                hintsProgress: widget.gameState.hintsProgress,
+                totalLevels: widget.gameState.levels.length,
               ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) => setState(() => _currentIndex = i),
+        onTap: (i) {
+          if (i == 2 && _unseenAchievementsCount > 0) {
+            setState(() {
+              _unseenAchievementsCount = 0;
+              _currentIndex = i;
+            });
+          } else {
+            setState(() => _currentIndex = i);
+          }
+        },
         selectedItemColor: AppColors.deepPurple,
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700),
@@ -158,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'leaderboard'.tr(),
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.person_rounded),
+            icon: _ProfileNavIcon(unseenCount: _unseenAchievementsCount),
             label: 'profile'.tr(),
           ),
         ],
@@ -509,6 +565,97 @@ class _ChallengeButtonState extends State<_ChallengeButton> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Profile nav icon with animated badge dot
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProfileNavIcon extends StatefulWidget {
+  final int unseenCount;
+  const _ProfileNavIcon({required this.unseenCount});
+
+  @override
+  State<_ProfileNavIcon> createState() => _ProfileNavIconState();
+}
+
+class _ProfileNavIconState extends State<_ProfileNavIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.35).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    if (widget.unseenCount > 0) {
+      _pulseController.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_ProfileNavIcon old) {
+    super.didUpdateWidget(old);
+    if (widget.unseenCount > 0 && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (widget.unseenCount == 0 && _pulseController.isAnimating) {
+      _pulseController.stop();
+      _pulseController.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Icon(Icons.person_rounded),
+        if (widget.unseenCount > 0)
+          Positioned(
+            top: -4,
+            right: -6,
+            child: AnimatedBuilder(
+              animation: _pulseAnim,
+              builder: (_, child) => Transform.scale(
+                scale: _pulseAnim.value,
+                child: child,
+              ),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE53935),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    widget.unseenCount > 9 ? '9+' : '${widget.unseenCount}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
