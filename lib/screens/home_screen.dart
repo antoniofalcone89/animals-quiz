@@ -1,6 +1,7 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/achievement.dart';
 import '../models/game_state.dart';
 import '../services/service_locator.dart';
@@ -24,14 +25,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const String _seenAchievementsKey = 'seen_achievements_v1';
+
   int _currentIndex = 0;
 
   /// IDs of achievements already known to be unlocked — used to detect new ones.
   final Set<String> _knownUnlockedIds = {};
+  final Set<String> _seenAchievementIds = {};
+  bool _seenAchievementsLoaded = false;
 
   /// While loading initial progress we skip toasts (avoid false positives).
   bool _initialLoadDone = false;
-  bool _wasStatsLoading = true;
 
   /// Count of newly unlocked achievements not yet seen on the Profile tab.
   int _unseenAchievementsCount = 0;
@@ -40,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     widget.gameState.addListener(_onStateChanged);
+    _loadSeenAchievements();
     widget.gameState.loadLevels();
     widget.gameState.loadProgress();
     widget.gameState.loadTodayChallenge();
@@ -65,20 +70,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _seedKnownUnlockedAchievements() {
     final achievements = _computeAchievements();
+    final unlockedIds = achievements
+        .where((a) => a.isUnlocked)
+        .map((a) => a.id)
+        .toSet();
+
     _knownUnlockedIds
       ..clear()
-      ..addAll(achievements.where((a) => a.isUnlocked).map((a) => a.id));
+      ..addAll(unlockedIds);
+
+    final unseen = unlockedIds.difference(_seenAchievementIds).length;
+    _unseenAchievementsCount = _currentIndex == 2 ? 0 : unseen;
+  }
+
+  void _initializeAchievementTrackingIfReady() {
+    if (_initialLoadDone) return;
+    if (!_seenAchievementsLoaded) return;
+    if (widget.gameState.isStatsLoading) return;
+
+    _seedKnownUnlockedAchievements();
+    _initialLoadDone = true;
+  }
+
+  Future<void> _loadSeenAchievements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ids = prefs.getStringList(_seenAchievementsKey) ?? const <String>[];
+    if (!mounted) return;
+
+    setState(() {
+      _seenAchievementIds
+        ..clear()
+        ..addAll(ids);
+      _seenAchievementsLoaded = true;
+      _initializeAchievementTrackingIfReady();
+    });
+  }
+
+  Future<void> _persistSeenAchievements() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _seenAchievementsKey,
+      _seenAchievementIds.toList()..sort(),
+    );
+  }
+
+  Future<void> _markAllUnlockedAchievementsAsSeen() async {
+    final unlockedIds = _computeAchievements()
+        .where((a) => a.isUnlocked)
+        .map((a) => a.id)
+        .toSet();
+
+    _seenAchievementIds.addAll(unlockedIds);
+    _unseenAchievementsCount = 0;
+    await _persistSeenAchievements();
   }
 
   void _onStateChanged() {
     if (!mounted) return;
 
-    final isStatsLoading = widget.gameState.isStatsLoading;
-    if (_wasStatsLoading && !isStatsLoading && !_initialLoadDone) {
-      _seedKnownUnlockedAchievements();
-      _initialLoadDone = true;
-    }
-    _wasStatsLoading = isStatsLoading;
+    _initializeAchievementTrackingIfReady();
 
     if (_initialLoadDone) {
       _checkNewAchievements();
@@ -91,10 +141,15 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final a in achievements) {
       if (a.isUnlocked && !_knownUnlockedIds.contains(a.id)) {
         _knownUnlockedIds.add(a.id);
-        // Only count as unseen if the user is not currently on the Profile tab.
-        if (_currentIndex != 2) {
-          _unseenAchievementsCount++;
+
+        if (_currentIndex == 2) {
+          _seenAchievementIds.add(a.id);
+          _persistSeenAchievements();
+          continue;
         }
+
+        // Only count as unseen if the user is not currently on the Profile tab.
+        _unseenAchievementsCount++;
         // Delay slightly so the UI frame settles before the toast appears.
         Future.delayed(const Duration(milliseconds: 300), () {
           if (mounted) showAchievementToast(context, a);
@@ -168,6 +223,30 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  Future<void> _handleDebugResetLevels() async {
+    try {
+      await widget.gameState.debugResetLevelsAndAchievements();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reset failed')));
+      return;
+    }
+
+    _knownUnlockedIds.clear();
+    _seenAchievementIds.clear();
+    _unseenAchievementsCount = 0;
+
+    await _persistSeenAchievements();
+    if (!mounted) return;
+    setState(() {});
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Levels and badges reset')));
+  }
+
   Future<void> _openDailyChallenge() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -200,6 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onLinkWithGoogle: _handleLinkWithGoogle,
                 onLinkWithEmail: _handleLinkWithEmail,
                 onDebugForceStreakBonus: _handleDebugForceStreakBonus,
+                onDebugResetLevels: _handleDebugResetLevels,
                 levelProgress: widget.gameState.levelProgress,
                 hintsProgress: widget.gameState.hintsProgress,
                 totalLevels: widget.gameState.levels.length,
@@ -207,12 +287,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (i) {
-          if (i == 2 && _unseenAchievementsCount > 0) {
-            setState(() {
-              _unseenAchievementsCount = 0;
-              _currentIndex = i;
-            });
+        onTap: (i) async {
+          if (i == 2) {
+            await _markAllUnlockedAchievementsAsSeen();
+            if (!mounted) return;
+            setState(() => _currentIndex = i);
           } else {
             setState(() => _currentIndex = i);
           }
